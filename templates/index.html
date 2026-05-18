@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CARVER Risk Assessment Tool</title>
+  <style>
+    :root {
+      --primary: #1a2744;
+      --accent:  #e63946;
+      --blue:    #457b9d;
+      --green:   #2a9d8f;
+      --yellow:  #d97706;
+      --orange:  #ea580c;
+      --red:     #e63946;
+      --border:  #d1d5db;
+      --bg:      #f3f4f6;
+      --text:    #1d3557;
+      --muted:   #6b7280;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0d1b2a;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      padding: 0.875rem 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      border-bottom: 3px solid var(--accent);
+    }
+    header .badge {
+      background: var(--accent); color: #fff;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px;
+    }
+    header h1 { color: #fff; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.04em; }
+    header .user-pill {
+      margin-left: auto;
+      font-size: 0.75rem; color: rgba(255,255,255,0.65);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    header .user-pill strong { color: #fff; }
+    header .signout-link {
+      margin-left: 0.5rem; font-size: 0.7rem;
+      color: rgba(255,255,255,0.4); text-decoration: none;
+    }
+    header .signout-link:hover { color: #fff; }
+
+    /* ── Layout ── */
+    .container { max-width: 880px; margin: 1.75rem auto; padding: 0 1rem; }
+
+    /* ── Step bar ── */
+    .steps {
+      display: flex; align-items: center;
+      background: #fff; border-radius: 8px;
+      padding: 0.875rem 1.25rem; margin-bottom: 1.5rem;
+      box-shadow: 0 1px 6px rgba(0,0,0,.12);
+    }
+    .step { display: flex; align-items: center; gap: 0.5rem; flex: 1; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700;
+      background: #e5e7eb; color: var(--muted);
+      transition: background 0.25s, color 0.25s; flex-shrink: 0;
+    }
+    .step.active .step-num { background: var(--blue);  color: #fff; }
+    .step.done   .step-num { background: var(--green); color: #fff; }
+    .step-lbl { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+    .step.active .step-lbl { color: var(--text); font-weight: 600; }
+    .step-div { flex: 0.4; height: 2px; background: #e5e7eb; }
+
+    /* ── Card ── */
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.12); overflow: hidden; }
+    .card-head {
+      background: var(--primary); color: #fff;
+      padding: 0.875rem 1.5rem; font-size: 0.85rem;
+      font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    }
+    .card-body { padding: 1.5rem; }
+
+    /* ── Save status banner (Step 4) ── */
+    .save-status {
+      font-size: 0.78rem; font-weight: 600;
+      padding: 0.45rem 1.5rem; display: none;
+    }
+    .save-status.ok  { background: #f0fdf8; color: #065f46; border-bottom: 1px solid #a7f3d0; }
+    .save-status.err { background: #fff0f1; color: #7f1d1d; border-bottom: 1px solid #fca5a5; }
+
+    /* ── Form ── */
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .fg { margin-bottom: 1.1rem; }
+    label.lbl { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+    .req { color: var(--accent); margin-left: 0.2rem; }
+    .opt { color: var(--muted); font-weight: 400; font-size: 0.72rem; margin-left: 0.4rem; }
+    input[type=text], input[type=date], select, textarea {
+      width: 100%; padding: 0.45rem 0.7rem;
+      border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: 0.85rem; color: var(--text); background: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(69,123,157,.15);
+    }
+    .hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+    .err-msg { font-size: 0.72rem; color: var(--accent); margin-top: 0.2rem; display: none; }
+    .is-err { border-color: var(--accent) !important; }
+
+    /* ── Suggestion box ── */
+    .suggest-box {
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 6px; padding: 0.875rem 1rem; margin-top: 0.75rem;
+    }
+    .suggest-box h4 {
+      font-size: 0.72rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--blue); margin-bottom: 0.5rem;
+    }
+    .suggest-box ul { list-style: none; }
+    .suggest-box li { font-size: 0.78rem; color: #374151; padding: 0.18rem 0; display: flex; gap: 0.5rem; }
+    .suggest-box li::before { content: "→"; color: var(--blue); flex-shrink: 0; }
+
+    /* ── Yes/No questions ── */
+    .yn-q {
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 1.1rem; margin-bottom: 0.875rem;
+    }
+    .yn-q .q-text { font-size: 0.875rem; font-weight: 700; color: var(--text); margin-bottom: 0.3rem; }
+    .yn-q .q-sub  { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.7rem; }
+    .yn-btns { display: flex; gap: 0.625rem; }
+    .yn-btn {
+      flex: 1; padding: 0.55rem; border: 2px solid var(--border);
+      border-radius: 6px; background: #fff;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; text-align: center; transition: all 0.18s;
+    }
+    .yn-btn:hover { border-color: var(--blue); background: #eff6ff; }
+    .yn-btn.sel-yes { border-color: var(--red);   background: #fff0f1; color: var(--red);   }
+    .yn-btn.sel-no  { border-color: var(--green); background: #f0fdf8; color: var(--green); }
+
+    /* ── CARVER scoring ── */
+    .warn-banner {
+      background: #fffbeb; border: 1px solid #f59e0b;
+      border-radius: 6px; padding: 0.7rem 1rem;
+      font-size: 0.78rem; color: #92400e; margin-bottom: 1.25rem; display: none;
+    }
+    .cv-item {
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 1.1rem; margin-bottom: 1.1rem; transition: border-color 0.2s;
+    }
+    .cv-item:hover { border-color: var(--blue); }
+    .cv-head { display: flex; align-items: flex-start; gap: 0.875rem; margin-bottom: 0.75rem; }
+    .cv-letter {
+      width: 38px; height: 38px; flex-shrink: 0;
+      background: var(--primary); color: #fff; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 900;
+    }
+    .cv-letter.sm { font-size: 0.85rem; }
+    .cv-info h3 { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+    .cv-info p  { font-size: 0.77rem; color: var(--muted); margin-top: 0.15rem; }
+    .cv-score { margin-left: auto; text-align: right; }
+    .cv-score .num { font-size: 1.5rem; font-weight: 900; color: var(--primary); line-height: 1; }
+    .cv-score .den { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .cv-opts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.45rem; }
+    .cv-opt {
+      border: 2px solid var(--border); border-radius: 6px; padding: 0.5rem 0.3rem;
+      cursor: pointer; text-align: center; transition: all 0.18s;
+    }
+    .cv-opt:hover { border-color: var(--blue); background: #eff6ff; }
+    .cv-opt.sel   { border-color: var(--blue); background: var(--blue); color: #fff; }
+    .cv-opt .lvl  { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: block; }
+    .cv-opt .sc   { font-size: 1rem; font-weight: 900; display: block; margin: 0.15rem 0; }
+    .cv-opt .dsc  { font-size: 0.6rem; line-height: 1.3; color: var(--muted); }
+    .cv-opt.sel .dsc { color: rgba(255,255,255,.8); }
+
+    /* ── Nav ── */
+    .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; }
+    .btn {
+      padding: 0.55rem 1.4rem; border-radius: 6px; border: none;
+      font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: filter 0.18s;
+    }
+    .btn:hover { filter: brightness(0.9); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-ghost   { background: #e5e7eb; color: var(--text); }
+    .btn-danger  { background: var(--accent); color: #fff; }
+    .btn-teal    { background: var(--blue); color: #fff; }
+    .btn-green   { background: var(--green); color: #fff; }
+    .btn-sm { padding: 0.3rem 0.75rem; font-size: 0.75rem; }
+    .btn-row { display: flex; gap: 0.625rem; align-items: center; flex-wrap: wrap; }
+
+    /* ── Report hero ── */
+    .risk-hero { text-align: center; padding: 1.5rem 1rem; }
+    .risk-score { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+    .risk-label { font-size: 1rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 0.4rem; }
+    .risk-bar-wrap { max-width: 380px; margin: 1rem auto 0.4rem; }
+    .risk-bar {
+      height: 10px;
+      background: linear-gradient(to right, #2a9d8f 0%, #2a9d8f 25%, #d97706 38%, #ea580c 62%, #e63946 79%, #e63946 100%);
+      border-radius: 6px; position: relative;
+    }
+    .risk-pip {
+      position: absolute; top: -5px;
+      width: 20px; height: 20px;
+      background: #fff; border: 3px solid var(--primary);
+      border-radius: 50%; transform: translateX(-50%);
+      transition: left 0.6s cubic-bezier(.34,1.56,.64,1);
+    }
+    .bar-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ── Meta grid ── */
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 2rem; font-size: 0.85rem; }
+    .meta-item label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .meta-item p { color: var(--text); font-weight: 500; }
+
+    /* ── YN tags ── */
+    .yn-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.625rem; }
+    .yn-tag { padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .yn-tag.yes { background: #fff0f1; color: var(--red);   border: 1px solid #fca5a5; }
+    .yn-tag.no  { background: #f0fdf8; color: var(--green); border: 1px solid #6ee7b7; }
+
+    /* ── CARVER summary table ── */
+    .cv-table { width: 100%; border-collapse: collapse; margin-top: 0.625rem; }
+    .cv-table th, .cv-table td {
+      padding: 0.6rem 0.875rem; text-align: left;
+      border-bottom: 1px solid var(--border); font-size: 0.82rem;
+    }
+    .cv-table th { background: var(--bg); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text); font-weight: 700; }
+    .cv-table tfoot td { font-weight: 700; }
+    .cv-table .sc-cell { text-align: center; font-weight: 800; font-size: 0.95rem; }
+
+    /* ── Recommendation ── */
+    .rec-box { margin-top: 1.25rem; padding: 1rem; border-radius: 8px; border-left: 4px solid; }
+    .rec-box strong { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .rec-box p { margin-top: 0.4rem; font-size: 0.82rem; color: #374151; line-height: 1.55; }
+
+    /* ── Email preview ── */
+    .email-section { margin-top: 1.5rem; }
+    .email-section .sect-lbl { margin-bottom: 0.375rem; }
+    .email-note { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.75rem; line-height: 1.5; }
+    .email-frame-wrap {
+      border: 1.5px solid var(--border); border-radius: 6px;
+      overflow: hidden; margin-bottom: 0.75rem; background: #fff;
+    }
+    #email-preview { width: 100%; height: 500px; border: none; display: block; }
+    .raw-html-wrap { margin-top: 0.625rem; }
+    .raw-html-wrap textarea {
+      width: 100%; font-size: 0.7rem; font-family: monospace;
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.5rem; color: var(--text); resize: vertical;
+    }
+
+    /* ── Misc ── */
+    .sect-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 800; margin-bottom: 0.625rem; }
+    hr.div { margin: 1.25rem 0; border: none; border-top: 1px solid var(--border); }
+    .c-green  { color: var(--green)  !important; }
+    .c-yellow { color: var(--yellow) !important; }
+    .c-red    { color: var(--red)    !important; }
+    .hidden { display: none !important; }
+
+    /* ── Assessment Log ── */
+    .log-wrap { max-width: 880px; margin: 0 auto 2.5rem; padding: 0 1rem; }
+    .log-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.12); overflow: hidden; }
+    .log-toggle {
+      background: #243050; color: #fff;
+      padding: 0.875rem 1.5rem; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      user-select: none; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    }
+    .log-toggle:hover { background: #2e3d62; }
+    .log-toggle .chevron { transition: transform 0.25s; font-style: normal; }
+    .log-toggle.open .chevron { transform: rotate(180deg); }
+    .log-body { padding: 1rem; overflow-x: auto; }
+    .log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .log-table th, .log-table td { padding: 0.55rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .log-table th { background: var(--bg); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--text); }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-empty { text-align: center; color: var(--muted); padding: 1.5rem; font-size: 0.82rem; }
+    .log-actions { display: flex; gap: 0.5rem; margin-bottom: 0.875rem; }
+    .tier-badge {
+      display: inline-block; padding: 0.15rem 0.55rem; border-radius: 4px;
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .tier-LOW       { background: #d1fae5; color: #065f46; }
+    .tier-MEDIUM    { background: #fef3c7; color: #78350f; }
+    .tier-EMERGENCY { background: #fee2e2; color: #7f1d1d; }
+
+    /* ── Print ── */
+    @media print {
+      body { background: #fff; }
+      header { border-bottom: 3px solid #333; print-color-adjust: exact; }
+      .nav, .steps, .log-wrap, .email-section { display: none; }
+      .card { box-shadow: none; border: 1px solid #ccc; }
+    }
+
+    @media (max-width: 600px) {
+      .row, .meta-grid { grid-template-columns: 1fr; }
+      .cv-opts { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="badge">CTI</span>
+  <h1>CARVER Risk Assessment Tool</h1>
+  <div class="user-pill">Signed in as <strong id="hdr-user">…</strong><a href="/logout" class="signout-link">Sign out</a></div>
+</header>
+
+<div class="container">
+
+  <!-- Step bar -->
+  <div class="steps">
+    <div class="step active" id="si-1"><div class="step-num" id="sn-1">1</div><div class="step-lbl">Metadata</div></div>
+    <div class="step-div"></div>
+    <div class="step" id="si-2"><div class="step-num" id="sn-2">2</div><div class="step-lbl">Pre-Assessment</div></div>
+    <div class="step-div"></div>
+    <div class="step" id="si-3"><div class="step-num" id="sn-3">3</div><div class="step-lbl">CARVER Matrix</div></div>
+    <div class="step-div"></div>
+    <div class="step" id="si-4"><div class="step-num" id="sn-4">4</div><div class="step-lbl">Risk Report</div></div>
+  </div>
+
+  <!-- ══════════════════════════ STEP 1 — Metadata -->
+  <div id="step-1" class="card">
+    <div class="card-head">Step 1 — Assessment Metadata</div>
+    <div class="card-body">
+
+      <div class="row">
+        <div class="fg">
+          <label class="lbl">Analyst Name <span class="req">*</span></label>
+          <input type="text" id="f-analyst" placeholder="e.g. J. Smith" />
+          <div class="err-msg" id="e-analyst">Analyst name is required.</div>
+        </div>
+        <div class="fg">
+          <label class="lbl">Assessment Date</label>
+          <input type="date" id="f-date" readonly />
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="lbl">CVE Identifier <span class="opt">optional</span></label>
+        <input type="text" id="f-cve" placeholder="e.g. CVE-2024-12345" />
+        <div class="hint">Leave blank if no CVE has been assigned.</div>
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Vulnerability / Threat Name <span class="req">*</span></label>
+        <input type="text" id="f-vuln" placeholder="e.g. Apache Log4Shell Remote Code Execution" />
+        <div class="err-msg" id="e-vuln">Vulnerability name is required.</div>
+      </div>
+
+      <div class="row">
+        <div class="fg">
+          <label class="lbl">Affected System / Application <span class="opt">optional</span></label>
+          <input type="text" id="f-system" placeholder="e.g. Customer Portal (prod)" />
+        </div>
+        <div class="fg">
+          <label class="lbl">Asset Owner / Team <span class="opt">optional</span></label>
+          <input type="text" id="f-owner" placeholder="e.g. Platform Engineering" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="fg">
+          <label class="lbl">Business Unit <span class="opt">optional</span></label>
+          <input type="text" id="f-bu" placeholder="e.g. Finance / Corporate IT" />
+        </div>
+        <div class="fg">
+          <label class="lbl">Threat Actor (if known) <span class="opt">optional</span></label>
+          <input type="text" id="f-actor" placeholder="e.g. APT29 / Unknown" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="fg">
+          <label class="lbl">MITRE ATT&amp;CK Technique(s) <span class="opt">optional</span></label>
+          <input type="text" id="f-mitre" placeholder="e.g. T1190 — Exploit Public-Facing Application" />
+        </div>
+        <div class="fg">
+          <label class="lbl">VPR Score <span class="opt">optional</span></label>
+          <input type="text" id="f-cvss" placeholder="e.g. 8.5 (High)" />
+          <div class="hint">Vulnerability Priority Rating from your scanner.</div>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Additional Notes / References <span class="opt">optional</span></label>
+        <textarea id="f-notes" rows="3" placeholder="Vendor advisory URLs, threat intel report links, affected versions, observations..."></textarea>
+      </div>
+
+      <div class="suggest-box">
+        <h4>Suggested fields for thorough documentation</h4>
+        <ul>
+          <li>Affected software version(s) — include in notes above or the affected system field</li>
+          <li>Vendor advisory / NVD link — paste into notes for traceability</li>
+          <li>Internal ticket or Jira reference number</li>
+          <li>Detection coverage — does your SIEM/EDR detect exploitation attempts?</li>
+          <li>Regulatory scope — does a breach require notification (PCI, HIPAA, GDPR)?</li>
+        </ul>
+      </div>
+
+      <div class="nav">
+        <span></span>
+        <button class="btn btn-primary" onclick="toStep2()">Next: Pre-Assessment →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ STEP 2 — Pre-Assessment -->
+  <div id="step-2" class="card hidden">
+    <div class="card-head">Step 2 — Pre-Assessment Questions</div>
+    <div class="card-body">
+
+      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1.1rem;">
+        Answer the following questions. Responses will pre-populate suggested CARVER scores and appear in the final report.
+      </p>
+
+      <div class="yn-q">
+        <div class="q-text">Is the vulnerability actively being exploited in the wild?</div>
+        <div class="q-sub">Confirmed exploitation by threat actors, CISA KEV listing, or credible threat intelligence reporting.</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="setAns('q1','yes',this)">Yes — Actively Exploited</button>
+          <button class="yn-btn" onclick="setAns('q1','no',this)">No — Not Confirmed</button>
+        </div>
+        <div class="err-msg" id="e-q1">Please select an answer.</div>
+      </div>
+
+      <div class="yn-q">
+        <div class="q-text">Is there a public proof-of-concept (PoC) exploit available?</div>
+        <div class="q-sub">Exploit code published on GitHub, Exploit-DB, Metasploit, or other publicly accessible sources.</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="setAns('q2','yes',this)">Yes — Public PoC Exists</button>
+          <button class="yn-btn" onclick="setAns('q2','no',this)">No — No Public PoC</button>
+        </div>
+        <div class="err-msg" id="e-q2">Please select an answer.</div>
+      </div>
+
+      <div class="yn-q">
+        <div class="q-text">Does the vulnerability affect an externally-facing asset?</div>
+        <div class="q-sub">Internet-facing systems, public APIs, customer portals, or perimeter-adjacent infrastructure reachable without VPN.</div>
+        <div class="yn-btns">
+          <button class="yn-btn" onclick="setAns('q3','yes',this)">Yes — External / Internet-Facing</button>
+          <button class="yn-btn" onclick="setAns('q3','no',this)">No — Internal / Air-Gapped</button>
+        </div>
+        <div class="err-msg" id="e-q3">Please select an answer.</div>
+      </div>
+
+      <div class="nav">
+        <button class="btn btn-ghost" onclick="goStep(1)">← Back</button>
+        <button class="btn btn-primary" onclick="toStep3()">Next: CARVER Matrix →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ STEP 3 — CARVER Matrix -->
+  <div id="step-3" class="card hidden">
+    <div class="card-head">Step 3 — CARVER Matrix Scoring &nbsp;<small style="font-weight:400;font-size:0.75rem;opacity:0.7;">(each dimension scored 1–5 &nbsp;|&nbsp; total range 6–30)</small></div>
+    <div class="card-body">
+
+      <div class="warn-banner" id="suggest-banner">
+        ⚠&nbsp; Based on your pre-assessment answers, initial scores have been suggested for relevant dimensions. Review each carefully and adjust to reflect your specific context.
+      </div>
+
+      <!-- C — Criticality -->
+      <div class="cv-item">
+        <div class="cv-head">
+          <div class="cv-letter">C</div>
+          <div class="cv-info">
+            <h3>Criticality</h3>
+            <p>How vital is the asset to operations? How severe would the impact be if it were lost or destroyed?</p>
+          </div>
+          <div class="cv-score"><div class="num" id="sc-C">—</div><div class="den">/ 5</div></div>
+        </div>
+        <div class="cv-opts" id="opts-C">
+          <div class="cv-opt" onclick="setCV('C',1,this)" data-sc="1"><span class="lvl">Negligible</span><span class="sc">1</span><span class="dsc">Non-critical; loss has negligible operational impact</span></div>
+          <div class="cv-opt" onclick="setCV('C',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">Non-essential functions; disruption is tolerable</span></div>
+          <div class="cv-opt" onclick="setCV('C',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Important to operations; loss causes notable disruption</span></div>
+          <div class="cv-opt" onclick="setCV('C',4,this)" data-sc="4"><span class="lvl">Significant</span><span class="sc">4</span><span class="dsc">Loss causes major operational failure or downtime</span></div>
+          <div class="cv-opt" onclick="setCV('C',5,this)" data-sc="5"><span class="lvl">Severe</span><span class="sc">5</span><span class="dsc">Loss is catastrophic; operations cannot continue</span></div>
+        </div>
+        <div class="err-msg" id="e-C">Please select a score for Criticality.</div>
+      </div>
+
+      <!-- A — Accessibility -->
+      <div class="cv-item">
+        <div class="cv-head">
+          <div class="cv-letter">A</div>
+          <div class="cv-info">
+            <h3>Accessibility</h3>
+            <p>How easily can an adversary physically or digitally reach and access the target?</p>
+          </div>
+          <div class="cv-score"><div class="num" id="sc-A">—</div><div class="den">/ 5</div></div>
+        </div>
+        <div class="cv-opts" id="opts-A">
+          <div class="cv-opt" onclick="setCV('A',1,this)" data-sc="1"><span class="lvl">Hardened</span><span class="sc">1</span><span class="dsc">Multiple security layers; physical or insider access required</span></div>
+          <div class="cv-opt" onclick="setCV('A',2,this)" data-sc="2"><span class="lvl">Restricted</span><span class="sc">2</span><span class="dsc">Strong controls; significant effort required to reach</span></div>
+          <div class="cv-opt" onclick="setCV('A',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Reachable with effort; some auth/network barriers present</span></div>
+          <div class="cv-opt" onclick="setCV('A',4,this)" data-sc="4"><span class="lvl">Exposed</span><span class="sc">4</span><span class="dsc">Easily reachable; internet-facing with limited controls</span></div>
+          <div class="cv-opt" onclick="setCV('A',5,this)" data-sc="5"><span class="lvl">Open</span><span class="sc">5</span><span class="dsc">Fully public; no meaningful access controls</span></div>
+        </div>
+        <div class="err-msg" id="e-A">Please select a score for Accessibility.</div>
+      </div>
+
+      <!-- R — Recoverability -->
+      <div class="cv-item">
+        <div class="cv-head">
+          <div class="cv-letter">R</div>
+          <div class="cv-info">
+            <h3>Recoverability</h3>
+            <p>How much time, effort, and resources are required to restore or replace the asset after an attack?</p>
+          </div>
+          <div class="cv-score"><div class="num" id="sc-R1">—</div><div class="den">/ 5</div></div>
+        </div>
+        <div class="cv-opts" id="opts-R1">
+          <div class="cv-opt" onclick="setCV('R1',1,this)" data-sc="1"><span class="lvl">Immediate</span><span class="sc">1</span><span class="dsc">Automated failover; full recovery in hours, no data loss</span></div>
+          <div class="cv-opt" onclick="setCV('R1',2,this)" data-sc="2"><span class="lvl">Short</span><span class="sc">2</span><span class="dsc">Recovery within 1–2 days via standard procedures</span></div>
+          <div class="cv-opt" onclick="setCV('R1',3,this)" data-sc="3"><span class="lvl">Extended</span><span class="sc">3</span><span class="dsc">Days to one week; minor permanent damage possible</span></div>
+          <div class="cv-opt" onclick="setCV('R1',4,this)" data-sc="4"><span class="lvl">Prolonged</span><span class="sc">4</span><span class="dsc">Weeks of recovery; significant resources; likely data loss</span></div>
+          <div class="cv-opt" onclick="setCV('R1',5,this)" data-sc="5"><span class="lvl">Catastrophic</span><span class="sc">5</span><span class="dsc">Months or unrecoverable; irreversible data loss</span></div>
+        </div>
+        <div class="err-msg" id="e-R1">Please select a score for Recoverability.</div>
+      </div>
+
+      <!-- V — Vulnerability -->
+      <div class="cv-item">
+        <div class="cv-head">
+          <div class="cv-letter">V</div>
+          <div class="cv-info">
+            <h3>Vulnerability</h3>
+            <p>Does the target have weaknesses that an adversary can realistically exploit with available methods?</p>
+          </div>
+          <div class="cv-score"><div class="num" id="sc-V">—</div><div class="den">/ 5</div></div>
+        </div>
+        <div class="cv-opts" id="opts-V">
+          <div class="cv-opt" onclick="setCV('V',1,this)" data-sc="1"><span class="lvl">Negligible</span><span class="sc">1</span><span class="dsc">No known exploit; complex chain; strong mitigating controls</span></div>
+          <div class="cv-opt" onclick="setCV('V',2,this)" data-sc="2"><span class="lvl">Low</span><span class="sc">2</span><span class="dsc">Theoretical exploit; requires high skill and specific conditions</span></div>
+          <div class="cv-opt" onclick="setCV('V',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Known weakness; exploit requires moderate skill or conditions</span></div>
+          <div class="cv-opt" onclick="setCV('V',4,this)" data-sc="4"><span class="lvl">Elevated</span><span class="sc">4</span><span class="dsc">Public exploit code; basic skill sufficient; weak mitigations</span></div>
+          <div class="cv-opt" onclick="setCV('V',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Actively exploited in the wild; trivial; no effective mitigations</span></div>
+        </div>
+        <div class="err-msg" id="e-V">Please select a score for Vulnerability.</div>
+      </div>
+
+      <!-- E — Effect -->
+      <div class="cv-item">
+        <div class="cv-head">
+          <div class="cv-letter">E</div>
+          <div class="cv-info">
+            <h3>Effect</h3>
+            <p>What are the broader, systemic consequences of a successful attack on this asset or area?</p>
+          </div>
+          <div class="cv-score"><div class="num" id="sc-E">—</div><div class="den">/ 5</div></div>
+        </div>
+        <div class="cv-opts" id="opts-E">
+          <div class="cv-opt" onclick="setCV('E',1,this)" data-sc="1"><span class="lvl">Contained</span><span class="sc">1</span><span class="dsc">Isolated impact; no cascading or downstream effects</span></div>
+          <div class="cv-opt" onclick="setCV('E',2,this)" data-sc="2"><span class="lvl">Limited</span><span class="sc">2</span><span class="dsc">Minor effects on a small number of dependent systems</span></div>
+          <div class="cv-opt" onclick="setCV('E',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Noticeable impact across multiple systems or business units</span></div>
+          <div class="cv-opt" onclick="setCV('E',4,this)" data-sc="4"><span class="lvl">Widespread</span><span class="sc">4</span><span class="dsc">Significant impact across the organization or sector</span></div>
+          <div class="cv-opt" onclick="setCV('E',5,this)" data-sc="5"><span class="lvl">Catastrophic</span><span class="sc">5</span><span class="dsc">National or critical-infrastructure scope; irreversible damage</span></div>
+        </div>
+        <div class="err-msg" id="e-E">Please select a score for Effect.</div>
+      </div>
+
+      <!-- R² — Recognizability -->
+      <div class="cv-item">
+        <div class="cv-head">
+          <div class="cv-letter sm">R²</div>
+          <div class="cv-info">
+            <h3>Recognizability</h3>
+            <p>Can an adversary easily identify the target and distinguish it from other assets?</p>
+          </div>
+          <div class="cv-score"><div class="num" id="sc-R2">—</div><div class="den">/ 5</div></div>
+        </div>
+        <div class="cv-opts" id="opts-R2">
+          <div class="cv-opt" onclick="setCV('R2',1,this)" data-sc="1"><span class="lvl">Hidden</span><span class="sc">1</span><span class="dsc">Obscure; adversary needs deep insider knowledge to find it</span></div>
+          <div class="cv-opt" onclick="setCV('R2',2,this)" data-sc="2"><span class="lvl">Internal</span><span class="sc">2</span><span class="dsc">Known to staff only; no meaningful public information</span></div>
+          <div class="cv-opt" onclick="setCV('R2',3,this)" data-sc="3"><span class="lvl">Partial</span><span class="sc">3</span><span class="dsc">Some public info exists; identifiable with research</span></div>
+          <div class="cv-opt" onclick="setCV('R2',4,this)" data-sc="4"><span class="lvl">Known</span><span class="sc">4</span><span class="dsc">Well-documented; easily identified via OSINT</span></div>
+          <div class="cv-opt" onclick="setCV('R2',5,this)" data-sc="5"><span class="lvl">Prominent</span><span class="sc">5</span><span class="dsc">Prominently labeled or advertised; trivially identifiable</span></div>
+        </div>
+        <div class="err-msg" id="e-R2">Please select a score for Recognizability.</div>
+      </div>
+
+      <div class="nav">
+        <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+        <button class="btn btn-danger" onclick="buildReport()">Generate Risk Report →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ STEP 4 — Risk Report -->
+  <div id="step-4" class="card hidden">
+    <div class="card-head">Step 4 — CARVER Risk Report</div>
+    <!-- Save status: set by JS after server POST -->
+    <div id="save-status" class="save-status"></div>
+    <div class="card-body">
+
+      <!-- Hero -->
+      <div class="risk-hero">
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">CARVER Total Score</div>
+        <div class="risk-score" id="rpt-score">—</div>
+        <div class="risk-label" id="rpt-level">—</div>
+        <div class="risk-bar-wrap">
+          <div class="risk-bar"><div class="risk-pip" id="rpt-pip"></div></div>
+          <div class="bar-labels">
+            <span>6 — Low</span><span>13 — Medium</span><span>25 — Emergency</span><span>30</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="div" />
+      <div class="sect-lbl">Assessment Information</div>
+      <div class="meta-grid" id="rpt-meta"></div>
+
+      <hr class="div" />
+      <div class="sect-lbl">Pre-Assessment Indicators</div>
+      <div class="yn-tags" id="rpt-yn"></div>
+
+      <hr class="div" />
+      <div class="sect-lbl">CARVER Matrix Scores</div>
+      <table class="cv-table">
+        <thead>
+          <tr>
+            <th style="width:150px;">Dimension</th>
+            <th>Description</th>
+            <th style="width:110px;">Level</th>
+            <th style="width:65px;text-align:center;">Score</th>
+          </tr>
+        </thead>
+        <tbody id="rpt-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" style="text-align:right;">Total CARVER Score</td>
+            <td class="sc-cell" id="rpt-total">—</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="rec-box" id="rpt-rec"></div>
+
+      <!-- Email Preview -->
+      <div class="email-section">
+        <hr class="div" />
+        <div class="sect-lbl">Email Report</div>
+        <p class="email-note">
+          The report below is formatted for email. To send via <strong>Outlook desktop</strong>: click <em>Copy for Outlook</em>, open a new email, click in the body, then paste (Ctrl+V) — Outlook will render the HTML automatically.<br>
+          For <strong>Outlook Web / Gmail</strong>: same steps; the rendered content pastes directly.
+        </p>
+        <div class="email-frame-wrap">
+          <iframe id="email-preview" sandbox="allow-same-origin" title="Email report preview"></iframe>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-green" id="copy-btn" onclick="copyEmailHTML()">Copy for Outlook</button>
+          <button class="btn btn-ghost" onclick="downloadHTML()">Download .html</button>
+          <button class="btn btn-ghost" onclick="toggleRaw()">Toggle Raw HTML</button>
+        </div>
+        <div id="raw-wrap" class="raw-html-wrap hidden">
+          <textarea id="raw-html" rows="10" readonly></textarea>
+        </div>
+      </div>
+
+      <hr class="div" />
+      <div class="nav">
+        <button class="btn btn-ghost" onclick="goStep(3)">← Back to Matrix</button>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="startOver()">New Assessment</button>
+          <button class="btn btn-teal" onclick="window.print()">Print / Save PDF</button>
+          <button class="btn btn-primary" id="log-btn" onclick="logAssessment()">Log Assessment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════ Assessment Log -->
+<div class="log-wrap">
+  <div class="log-card">
+    <div class="log-toggle" id="log-toggle" onclick="toggleLog()">
+      <span>Assessment Log</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div id="log-body" class="log-body hidden">
+      <div class="log-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button>
+      </div>
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Server Timestamp (UTC)</th>
+            <th>Logged In As</th>
+            <th>Analyst (Self-Reported)</th>
+            <th>Vulnerability (CVE)</th>
+            <th>System</th>
+            <th>Score</th>
+            <th>Risk</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State
+  const ans = { q1: null, q2: null, q3: null };
+  const cv  = { C: null, A: null, R1: null, V: null, E: null, R2: null };
+  const lvl = {};
+  const autoSuggestedDims = new Set();
+  let emailHTML = '';
+  let hasLogged = false;
+
+  // Auto-fill today's date
+  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+  // Load the log and display the authenticated username on page load
+  renderLog().catch(console.error);
+  fetchCurrentUser().catch(console.error);
+
+  // ── Step navigation
+  function goStep(n) {
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`step-${i}`).classList.add('hidden');
+      const si = document.getElementById(`si-${i}`);
+      const sn = document.getElementById(`sn-${i}`);
+      si.classList.remove('active','done');
+      if (i < n) { si.classList.add('done');  sn.textContent = '✓'; }
+      else        {                             sn.textContent = i;  }
+    });
+    document.getElementById(`step-${n}`).classList.remove('hidden');
+    document.getElementById(`si-${n}`).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Step 1 → 2
+  function toStep2() {
+    let ok = true;
+    const chk = (id, eid) => {
+      const val = document.getElementById(id).value.trim();
+      const e   = document.getElementById(eid);
+      const el  = document.getElementById(id);
+      if (!val) { e.style.display='block'; el.classList.add('is-err'); ok=false; }
+      else      { e.style.display='none';  el.classList.remove('is-err'); }
+    };
+    chk('f-analyst','e-analyst');
+    chk('f-vuln','e-vuln');
+    if (ok) goStep(2);
+  }
+
+  // ── Step 2 → 3
+  function toStep3() {
+    let ok = true;
+    ['q1','q2','q3'].forEach(q => {
+      const e = document.getElementById(`e-${q}`);
+      if (!ans[q]) { e.style.display='block'; ok=false; }
+      else           e.style.display='none';
+    });
+    if (!ok) return;
+    applySuggestions();
+    goStep(3);
+  }
+
+  // ── Pre-assessment answers
+  function setAns(q, val, btn) {
+    if (ans[q] !== val) hasLogged = false;
+    ans[q] = val;
+    btn.closest('.yn-q').querySelectorAll('.yn-btn').forEach(b =>
+      b.classList.remove('sel-yes','sel-no'));
+    btn.classList.add(val === 'yes' ? 'sel-yes' : 'sel-no');
+    document.getElementById(`e-${q}`).style.display = 'none';
+  }
+
+  // ── Suggest CARVER scores from pre-assessment answers
+  function applySuggestions() {
+    // Clear any previously auto-suggested scores so changed answers take effect
+    autoSuggestedDims.forEach(dim => {
+      cv[dim] = null;
+      document.getElementById(`opts-${dim}`).querySelectorAll('.cv-opt').forEach(o => o.classList.remove('sel'));
+      document.getElementById(`sc-${dim}`).textContent = '—';
+      delete lvl[dim];
+    });
+    autoSuggestedDims.clear();
+
+    const suggest = (dim, score) => {
+      if (cv[dim] !== null) return;
+      const el = document.querySelector(`#opts-${dim} [data-sc="${score}"]`);
+      if (el) { el.click(); autoSuggestedDims.add(dim); }
+    };
+    let hasSug = false;
+    if      (ans.q1 === 'yes')                      { suggest('V', 5); hasSug = true; }
+    else if (ans.q2 === 'yes')                      { suggest('V', 4); hasSug = true; }
+    if      (ans.q3 === 'yes' && ans.q1 === 'yes') { suggest('A', 5); hasSug = true; }
+    else if (ans.q3 === 'yes')                      { suggest('A', 4); hasSug = true; }
+    document.getElementById('suggest-banner').style.display = hasSug ? 'block' : 'none';
+  }
+
+  // ── CARVER option selection
+  function setCV(dim, score, el) {
+    autoSuggestedDims.delete(dim);
+    cv[dim] = score;
+    document.getElementById(`opts-${dim}`).querySelectorAll('.cv-opt').forEach(o => o.classList.remove('sel'));
+    el.classList.add('sel');
+    document.getElementById(`sc-${dim}`).textContent = score;
+    lvl[dim] = el.querySelector('.lvl').textContent;
+    document.getElementById(`e-${dim}`).style.display = 'none';
+  }
+
+  // ── Score colour (1–5 scale)
+  function scoreColor(s) {
+    return s >= 5 ? '#c0392b' : s >= 4 ? '#ea580c' : s >= 3 ? '#d97706' : '#2a9d8f';
+  }
+
+  // ── Build report (async — saves to server)
+  async function buildReport() {
+    let ok = true;
+    Object.keys(cv).forEach(d => {
+      const e = document.getElementById(`e-${d}`);
+      if (cv[d] === null) { e.style.display = 'block'; ok = false; }
+    });
+    if (!ok) return;
+
+    const total = Object.values(cv).reduce((a,b) => a+b, 0);
+
+    let tier, cls, borderClr, bgClr, recText;
+    if (total <= 12) {
+      tier='LOW';       cls='c-green';  borderClr='#2a9d8f'; bgClr='#f0fdf8';
+      recText='Standard monitoring is appropriate. Schedule remediation within normal patch cycles. Verify existing controls remain effective and maintain routine vulnerability management cadence.';
+    } else if (total <= 24) {
+      tier='MEDIUM';    cls='c-yellow'; borderClr='#d97706'; bgClr='#fffbeb';
+      recText='Elevated attention required. Prioritize within the current patch cycle. Implement additional monitoring, apply compensating controls where possible, and brief relevant stakeholders. Track remediation to closure.';
+    } else {
+      tier='EMERGENCY'; cls='c-red';    borderClr='#e63946'; bgClr='#fff0f1';
+      recText='Emergency response warranted. Convene incident response leadership immediately. Deploy compensating controls, initiate emergency patching or asset isolation, and consider threat hunting. Executive notification and possible regulatory reporting may be required. Continuous monitoring until fully resolved.';
+    }
+
+    // App UI
+    document.getElementById('rpt-score').className   = `risk-score ${cls}`;
+    document.getElementById('rpt-score').textContent = total;
+    document.getElementById('rpt-level').className   = `risk-label ${cls}`;
+    document.getElementById('rpt-level').textContent = `${tier} RISK`;
+    document.getElementById('rpt-total').textContent = `${total} / 30`;
+
+    const pct = Math.min(Math.max(((total-6)/24)*100, 0), 100);
+    document.getElementById('rpt-pip').style.left = pct + '%';
+
+    // Metadata
+    const metaFields = [
+      ['Vulnerability',   fv('f-vuln')    || '—'],
+      ['CVE',             fv('f-cve')     || 'N/A'],
+      ['VPR Score',       fv('f-cvss')    || 'N/A'],
+      ['Analyst',         fv('f-analyst') || '—'],
+      ['Assessment Date', fv('f-date')    || '—'],
+      ['Affected System', fv('f-system')  || 'N/A'],
+      ['Asset Owner',     fv('f-owner')   || 'N/A'],
+      ['Business Unit',   fv('f-bu')      || 'N/A'],
+      ['Threat Actor',    fv('f-actor')   || 'N/A'],
+      ['MITRE Technique', fv('f-mitre')   || 'N/A'],
+    ];
+    document.getElementById('rpt-meta').innerHTML = metaFields.map(([k,val]) =>
+      `<div class="meta-item"><label>${k}</label><p>${val}</p></div>`).join('');
+    const notes = fv('f-notes');
+    if (notes) {
+      document.getElementById('rpt-meta').innerHTML +=
+        `<div class="meta-item" style="grid-column:1/-1"><label>Notes / References</label><p style="white-space:pre-wrap">${esc(notes)}</p></div>`;
+    }
+
+    // Pre-assessment tags
+    const ynMap = {
+      q1: { yes: 'Actively Exploited: YES', no: 'Actively Exploited: NO' },
+      q2: { yes: 'Public PoC: YES',         no: 'Public PoC: NO'         },
+      q3: { yes: 'External Asset: YES',     no: 'External Asset: NO'     },
+    };
+    document.getElementById('rpt-yn').innerHTML =
+      ['q1','q2','q3'].map(q =>
+        `<span class="yn-tag ${ans[q]}">${ynMap[q][ans[q]]}</span>`).join('');
+
+    // CARVER table
+    const dims = [
+      ['C',  'Criticality',     'How vital is the asset? Severity of loss or destruction.'],
+      ['A',  'Accessibility',   'Ease of physical or digital access for an adversary.'],
+      ['R1', 'Recoverability',  'Time, effort, and resources to restore the asset.'],
+      ['V',  'Vulnerability',   'Exploitable weaknesses reachable with available adversary methods.'],
+      ['E',  'Effect',          'Broader, systemic consequences of a successful attack.'],
+      ['R2', 'Recognizability', 'Ease of target identification and distinction from other assets.'],
+    ];
+    document.getElementById('rpt-tbody').innerHTML = dims.map(([d, name, desc]) => {
+      const s = cv[d];
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td style="color:var(--muted);font-size:0.77rem;">${desc}</td>
+        <td>${lvl[d]||''}</td>
+        <td class="sc-cell" style="color:${scoreColor(s)}">${s}</td>
+      </tr>`;
+    }).join('');
+
+    const rec = document.getElementById('rpt-rec');
+    rec.style.borderColor = borderClr;
+    rec.style.background  = bgClr;
+    rec.innerHTML = `<strong style="color:${borderClr}">${tier} RISK — Score: ${total} / 30</strong><p>${recText}</p>`;
+
+    // Email HTML
+    emailHTML = buildEmailHTML(total, tier, borderClr, bgClr, recText, dims, ynMap);
+    document.getElementById('email-preview').srcdoc = emailHTML;
+    document.getElementById('raw-html').value = emailHTML;
+
+    // Navigate so the analyst can review the report before deciding to log it.
+    // Nothing is written to the server here — logging only happens when the
+    // analyst explicitly clicks the "Log Assessment" button.
+    goStep(4);
+
+    // Reset the Log button whenever a new report is built, so re-generating
+    // (e.g. after going back and adjusting a score) re-enables it correctly.
+    const logBtn = document.getElementById('log-btn');
+    if (logBtn) {
+      logBtn.disabled    = false;
+      logBtn.textContent = 'Log Assessment';
+      logBtn.className   = 'btn btn-primary';
+    }
+  }
+
+  // ── Save status indicator
+  function setSaveStatus(state, msg) {
+    const el = document.getElementById('save-status');
+    el.className = 'save-status';
+    el.style.display = 'block';
+    if (state === 'saving') {
+      el.textContent = 'Saving to server…';
+    } else if (state === 'ok') {
+      el.classList.add('ok');
+      el.textContent = '✓ Assessment saved to server and audit log.';
+    } else if (state === 'err') {
+      el.classList.add('err');
+      el.textContent = `⚠ Could not save to server: ${msg || 'unknown error'}. The report is still available — copy or download the email HTML to preserve it.`;
+    }
+  }
+
+  // ── Log Assessment — called only when analyst clicks the button
+  async function logAssessment() {
+    if (hasLogged) return;                      // idempotent guard
+    if (!emailHTML) return;                     // report must be built first
+
+    const logBtn = document.getElementById('log-btn');
+    logBtn.disabled    = true;
+    logBtn.textContent = 'Saving…';
+
+    // Re-derive total and tier from current cv state so the logged values
+    // always reflect whatever the analyst last saw on this report render,
+    // even if they went back and adjusted scores before clicking Log.
+    const total = Object.values(cv).reduce((a, b) => a + b, 0);
+    const tier  = total <= 12 ? 'LOW' : total <= 24 ? 'MEDIUM' : 'EMERGENCY';
+
+    setSaveStatus('saving');
+    try {
+      await apiPost('/api/assessments', {
+        date:          fv('f-date'),
+        analyst:       fv('f-analyst'),
+        cve:           fv('f-cve'),
+        vuln_name:     fv('f-vuln'),
+        system:        fv('f-system'),
+        owner:         fv('f-owner'),
+        business_unit: fv('f-bu'),
+        threat_actor:  fv('f-actor'),
+        mitre:         fv('f-mitre'),
+        vpr_score:     fv('f-cvss'),
+        notes:         fv('f-notes'),
+        pre_q1:        ans.q1,
+        pre_q2:        ans.q2,
+        pre_q3:        ans.q3,
+        scores:        { ...cv },
+        levels:        { ...lvl },
+        total_score:   total,
+        risk_tier:     tier,
+        email_html:    emailHTML,
+      });
+      hasLogged = true;
+      setSaveStatus('ok');
+      logBtn.textContent = '✓ Logged';
+      logBtn.className   = 'btn btn-green';
+      await renderLog();
+    } catch (err) {
+      setSaveStatus('err', err.message);
+      logBtn.disabled    = false;
+      logBtn.textContent = 'Log Assessment';
+      logBtn.className   = 'btn btn-primary';
+    }
+  }
+
+  // ── Email HTML builder (unchanged from standalone version)
+  function buildEmailHTML(total, tier, accentColor, heroBg, recText, dims, ynMap) {
+    const ynBg  = { yes: '#fee2e2', no: '#d1fae5' };
+    const ynClr = { yes: '#7f1d1d', no: '#064e3b' };
+
+    const metaFields = [
+      ['Vulnerability / Threat', fv('f-vuln')    || '—'],
+      ['CVE Identifier',         fv('f-cve')     || 'N/A'],
+      ['VPR Score',              fv('f-cvss')    || 'N/A'],
+      ['Analyst',                fv('f-analyst') || '—'],
+      ['Assessment Date',        fv('f-date')    || '—'],
+      ['Affected System',        fv('f-system')  || 'N/A'],
+      ['Asset Owner / Team',     fv('f-owner')   || 'N/A'],
+      ['Business Unit',          fv('f-bu')      || 'N/A'],
+      ['Threat Actor',           fv('f-actor')   || 'N/A'],
+      ['MITRE ATT&CK',           fv('f-mitre')   || 'N/A'],
+    ].filter(([,v]) => v && v !== 'N/A');
+
+    let metaRows = '';
+    for (let i = 0; i < metaFields.length; i += 2) {
+      const f1 = metaFields[i], f2 = metaFields[i+1];
+      const cell = (f) => f
+        ? `<td width="50%" valign="top" style="padding:7px 10px;border:1px solid #e5e7eb;background-color:#f9fafb;">
+             <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;margin-bottom:3px;">${f[0]}</div>
+             <div style="font-size:13px;color:#1d3557;font-family:Arial,Helvetica,sans-serif;font-weight:600;">${esc(f[1])}</div>
+           </td>`
+        : `<td width="50%" style="border:1px solid #e5e7eb;background-color:#f9fafb;"></td>`;
+      metaRows += `<tr>${cell(f1)}${cell(f2)}</tr>`;
+    }
+    const notesVal = fv('f-notes');
+    if (notesVal) {
+      metaRows += `<tr><td colspan="2" style="padding:7px 10px;border:1px solid #e5e7eb;background-color:#f9fafb;">
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;margin-bottom:3px;">Notes / References</div>
+        <div style="font-size:12px;color:#374151;font-family:Arial,Helvetica,sans-serif;white-space:pre-wrap;">${esc(notesVal)}</div>
+      </td></tr>`;
+    }
+
+    const ynCells = ['q1','q2','q3'].map(q => {
+      const val = ans[q];
+      return `<td style="padding:3px;">
+        <span style="display:inline-block;padding:4px 10px;background-color:${ynBg[val]};color:${ynClr[val]};font-size:11px;font-weight:700;font-family:Arial,Helvetica,sans-serif;">${ynMap[q][val]}</span>
+      </td>`;
+    }).join('');
+
+    const scClr = s => s>=5?'#c0392b':s>=4?'#ea580c':s>=3?'#d97706':'#2a9d8f';
+    const carverRows = dims.map(([d, name]) =>
+      `<tr>
+        <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#1d3557;">${name}</td>
+        <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6b7280;">${lvl[d]||''}</td>
+        <td align="center" style="padding:8px 12px;border:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;color:${scClr(cv[d])};">${cv[d]}</td>
+      </tr>`
+    ).join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>CARVER Assessment — ${esc(fv('f-vuln'))}</title></head>
+<body style="margin:0;padding:20px;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+<table width="680" border="0" cellpadding="0" cellspacing="0" align="center" style="background-color:#ffffff;border:1px solid #d1d5db;">
+  <tr><td bgcolor="#1a2744" style="background-color:#1a2744;padding:16px 20px;border-bottom:3px solid #e63946;">
+    <table border="0" cellpadding="0" cellspacing="0"><tr>
+      <td bgcolor="#e63946" style="background-color:#e63946;padding:3px 8px;"><span style="color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;">CTI</span></td>
+      <td style="padding-left:12px;"><span style="color:#ffffff;font-size:15px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">CARVER Risk Assessment Report</span></td>
+    </tr></table>
+  </td></tr>
+  <tr><td bgcolor="${heroBg}" align="center" style="background-color:${heroBg};padding:28px 20px;border-bottom:1px solid #e5e7eb;">
+    <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;margin-bottom:8px;">CARVER TOTAL SCORE</div>
+    <div style="font-size:52px;font-weight:900;color:${accentColor};font-family:Arial,Helvetica,sans-serif;line-height:1;">${total}</div>
+    <div style="font-size:11px;font-weight:800;color:${accentColor};text-transform:uppercase;letter-spacing:4px;font-family:Arial,Helvetica,sans-serif;margin-top:8px;">${tier} RISK &nbsp;|&nbsp; Score: ${total} / 30</div>
+  </td></tr>
+  <tr><td style="padding:16px 20px 8px 20px;">
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;padding-bottom:6px;border-bottom:1px solid #e5e7eb;margin-bottom:10px;">ASSESSMENT INFORMATION</div>
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">${metaRows}</table>
+  </td></tr>
+  <tr><td style="padding:16px 20px 8px 20px;">
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;padding-bottom:6px;border-bottom:1px solid #e5e7eb;margin-bottom:10px;">PRE-ASSESSMENT INDICATORS</div>
+    <table border="0" cellpadding="0" cellspacing="0"><tr>${ynCells}</tr></table>
+  </td></tr>
+  <tr><td style="padding:16px 20px 8px 20px;">
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;padding-bottom:6px;border-bottom:1px solid #e5e7eb;margin-bottom:10px;">CARVER MATRIX SCORES</div>
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <th align="left" style="padding:8px 12px;border:1px solid #e5e7eb;background-color:#f3f4f6;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#374151;font-family:Arial,Helvetica,sans-serif;font-weight:700;">Dimension</th>
+        <th align="left" style="padding:8px 12px;border:1px solid #e5e7eb;background-color:#f3f4f6;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#374151;font-family:Arial,Helvetica,sans-serif;font-weight:700;">Level</th>
+        <th align="center" style="padding:8px 12px;border:1px solid #e5e7eb;background-color:#f3f4f6;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#374151;font-family:Arial,Helvetica,sans-serif;font-weight:700;">Score</th>
+      </tr>
+      ${carverRows}
+      <tr>
+        <td colspan="2" align="right" style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:700;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1d3557;">Total CARVER Score</td>
+        <td align="center" style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:900;font-size:16px;color:${accentColor};font-family:Arial,Helvetica,sans-serif;">${total} / 30</td>
+      </tr>
+    </table>
+  </td></tr>
+  <tr><td style="padding:16px 20px 20px 20px;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0"><tr>
+      <td bgcolor="${heroBg}" style="background-color:${heroBg};padding:14px 16px;border-left:4px solid ${accentColor};">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:${accentColor};font-family:Arial,Helvetica,sans-serif;margin-bottom:6px;">${tier} RISK — Recommended Action</div>
+        <div style="font-size:13px;color:#374151;font-family:Arial,Helvetica,sans-serif;line-height:1.6;">${recText}</div>
+      </td>
+    </tr></table>
+  </td></tr>
+  <tr><td bgcolor="#f3f4f6" align="center" style="background-color:#f3f4f6;padding:10px 20px;border-top:1px solid #e5e7eb;">
+    <span style="font-size:10px;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;">Generated by CARVER Risk Assessment Tool &mdash; ${esc(fv('f-date'))} &mdash; Analyst: ${esc(fv('f-analyst'))}</span>
+  </td></tr>
+</table>
+</body>
+</html>`;
+  }
+
+  // ── Copy email HTML as rich text (renders in Outlook on paste)
+  async function copyEmailHTML() {
+    const btn = document.getElementById('copy-btn');
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html':  new Blob([emailHTML], { type: 'text/html' }),
+          'text/plain': new Blob([emailHTML], { type: 'text/plain' }),
+        })
+      ]);
+      btn.textContent = '✓ Copied — Paste into Outlook';
+    } catch {
+      try {
+        await navigator.clipboard.writeText(emailHTML);
+        btn.textContent = '✓ HTML Source Copied';
+      } catch {
+        document.getElementById('raw-wrap').classList.remove('hidden');
+        document.getElementById('raw-html').select();
+        document.execCommand('copy');
+        btn.textContent = '✓ Copied from text box';
+      }
+    }
+    setTimeout(() => btn.textContent = 'Copy for Outlook', 3000);
+  }
+
+  function downloadHTML() {
+    const a = document.createElement('a');
+    const name = (fv('f-vuln') || 'carver-report').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+    a.href = URL.createObjectURL(new Blob([emailHTML], { type: 'text/html' }));
+    a.download = `${name}_carver_report.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function toggleRaw() {
+    document.getElementById('raw-wrap').classList.toggle('hidden');
+  }
+
+  // ── API helpers
+  async function apiPost(url, body) {
+    const resp = await fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => resp.statusText);
+      throw new Error(text || `HTTP ${resp.status}`);
+    }
+    return resp.json();
+  }
+
+  async function apiDelete(url) {
+    const resp = await fetch(url, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if (!resp.ok) {
+      let msg = `HTTP ${resp.status}`;
+      try { msg = (await resp.json()).error || msg; } catch (_) {}
+      throw new Error(msg);
+    }
+  }
+
+  // ── Current user display
+  async function fetchCurrentUser() {
+    try {
+      const resp = await fetch('/api/me', { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      document.getElementById('hdr-user').textContent = data.username;
+    } catch (_) {}
+  }
+
+  // ── Assessment log (server-backed)
+  async function renderLog() {
+    const tbody = document.getElementById('log-tbody');
+    try {
+      const resp = await fetch('/api/assessments', { credentials: 'same-origin' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const log = await resp.json();
+
+      if (!log.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="log-empty">No assessments logged yet. Complete an assessment to populate this log.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = log.map(e => {
+        const cveLabel = e.cve && e.cve !== 'N/A' ? ` <span style="color:var(--muted);font-size:0.72rem;">(${e.cve})</span>` : '';
+        const tierClr  = e.risk_tier==='LOW' ? '#2a9d8f' : e.risk_tier==='MEDIUM' ? '#d97706' : '#e63946';
+        return `<tr>
+          <td style="font-size:0.75rem;color:var(--muted);">${e.created_at}</td>
+          <td><strong>${esc(e.authenticated_as)}</strong></td>
+          <td>${esc(e.analyst)}</td>
+          <td>${esc(e.vuln_name)}${cveLabel}</td>
+          <td>${esc(e.system || '—')}</td>
+          <td style="font-weight:700;color:${tierClr};">${e.total_score} / 30</td>
+          <td><span class="tier-badge tier-${e.risk_tier}">${e.risk_tier}</span></td>
+          <td>
+            <div style="display:flex;gap:0.4rem;">
+              <a href="/api/assessments/${e.id}/report" class="btn btn-ghost btn-sm">Report</a>
+              <button class="btn btn-ghost btn-sm" onclick="deleteEntry(${e.id})">Remove</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="8" class="log-empty" style="color:var(--accent);">Could not load log: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function deleteEntry(id) {
+    if (!confirm('Remove this assessment from the log? This cannot be undone.')) return;
+    try {
+      await apiDelete(`/api/assessments/${id}`);
+      await renderLog();
+    } catch (err) {
+      alert(`Failed to remove entry: ${err.message}`);
+    }
+  }
+
+  function exportCSV() {
+    window.location = '/api/assessments/export';
+  }
+
+  function toggleLog() {
+    document.getElementById('log-body').classList.toggle('hidden');
+    document.getElementById('log-toggle').classList.toggle('open');
+  }
+
+  // ── Start over
+  function startOver() {
+    Object.keys(ans).forEach(k => ans[k] = null);
+    Object.keys(cv).forEach(k  => cv[k]  = null);
+    Object.keys(lvl).forEach(k => delete lvl[k]);
+    autoSuggestedDims.clear();
+    hasLogged = false;
+    emailHTML = '';
+
+    ['f-analyst','f-cve','f-cvss','f-vuln','f-system','f-owner',
+     'f-bu','f-actor','f-mitre','f-notes'].forEach(id =>
+      document.getElementById(id).value = '');
+    document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+    document.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('sel-yes','sel-no'));
+    document.querySelectorAll('.cv-opt').forEach(o => o.classList.remove('sel'));
+    ['C','A','R1','V','E','R2'].forEach(d => document.getElementById(`sc-${d}`).textContent = '—');
+    document.querySelectorAll('.err-msg').forEach(e => e.style.display = 'none');
+    document.querySelectorAll('.is-err').forEach(e => e.classList.remove('is-err'));
+    document.getElementById('suggest-banner').style.display = 'none';
+    document.getElementById('raw-wrap').classList.add('hidden');
+
+    const ss = document.getElementById('save-status');
+    ss.style.display = 'none';
+    ss.className = 'save-status';
+
+    const logBtn = document.getElementById('log-btn');
+    if (logBtn) {
+      logBtn.disabled    = false;
+      logBtn.textContent = 'Log Assessment';
+      logBtn.className   = 'btn btn-primary';
+    }
+
+    goStep(1);
+  }
+
+  // ── Helpers
+  function fv(id) { return (document.getElementById(id).value || '').trim(); }
+  function esc(s) {
+    return String(s||'')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+
+</body>
+</html>

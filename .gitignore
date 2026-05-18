@@ -1,0 +1,30 @@
+# Python virtual environment
+bin/
+include/
+lib/
+lib64
+pyvenv.cfg
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database (contains sensitive data — back up separately, never commit)
+data/
+
+# CSV exports (contain assessment data)
+*.csv
+
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# Editor / OS artefacts
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
