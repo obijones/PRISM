@@ -186,7 +186,7 @@ Analysts can navigate back from any step to adjust scores or notes before loggin
 
 ## Local Launcher
 
-The tool is designed to run as a **local server on the analyst's workstation** — no shared server or IT approval required. The Flask process binds to `127.0.0.1:5000` and is only accessible from the machine running it.
+The tool is designed to run as a **local server on the analyst's workstation**. The Flask process binds to `127.0.0.1:5000` and is only accessible from the machine running it.
 
 ### Windows
 
