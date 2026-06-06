@@ -3,3 +3,4 @@ werkzeug>=3.0
 nh3>=0.2
 gunicorn>=21.0
 flask-limiter>=3.5
+openpyxl>=3.1

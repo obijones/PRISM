@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CARVER Risk Assessment Tool</title>
+  <title>PRISM | Risk Assessment Tool</title>
   <style>
     :root {
       --primary: #1a2744;
@@ -33,14 +33,17 @@
       display: flex; align-items: center; gap: 0.75rem;
       border-bottom: 3px solid var(--accent);
     }
-    header .badge {
-      background: var(--accent); color: #fff;
-      font-size: 0.7rem; font-weight: 800;
-      letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px;
+    header .prism-icon { flex-shrink: 0; display: block; }
+    .brand { display: flex; flex-direction: column; gap: 0.06rem; }
+    .brand-name {
+      color: #fff; font-size: 1.22rem; font-weight: 800;
+      letter-spacing: 0.22em; line-height: 1;
     }
-    header h1 { color: #fff; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.04em; }
+    .brand-sub {
+      color: rgba(255,255,255,0.42); font-size: 0.54rem;
+      letter-spacing: 0.055em; line-height: 1; text-transform: uppercase;
+    }
     header .user-pill {
-      margin-left: auto;
       font-size: 0.75rem; color: rgba(255,255,255,0.65);
       display: flex; align-items: center; gap: 0.4rem;
     }
@@ -50,6 +53,50 @@
       color: rgba(255,255,255,0.4); text-decoration: none;
     }
     header .signout-link:hover { color: #fff; }
+    .sbom-btn {
+      margin-left: auto;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
+      color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.22); border-radius: 4px;
+      padding: 0.22rem 0.6rem; cursor: pointer; transition: background 0.16s, color 0.16s;
+      white-space: nowrap;
+    }
+    .sbom-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+    /* ── SBOM modal ── */
+    .sbom-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.55);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sbom-box {
+      background: #fff; border-radius: 8px; max-width: 640px; width: 92%;
+      max-height: 80vh; display: flex; flex-direction: column;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.32); overflow: hidden;
+    }
+    .sbom-head {
+      background: var(--primary); color: #fff;
+      padding: 0.85rem 1.25rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sbom-head h2 { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.07em; margin: 0; }
+    .sbom-x {
+      background: none; border: none; color: rgba(255,255,255,0.6);
+      font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 0.2rem;
+    }
+    .sbom-x:hover { color: #fff; }
+    .sbom-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
+    .sbom-gen { font-size: 0.71rem; color: var(--muted); margin-bottom: 0.85rem; }
+    .sbom-tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .sbom-tbl th, .sbom-tbl td {
+      padding: 0.45rem 0.75rem; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .sbom-tbl th {
+      background: var(--bg); font-size: 0.68rem;
+      text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+    }
+    .sbom-tbl tr:last-child td { border-bottom: none; }
+    .sbom-tbl code { font-size: 0.8rem; }
 
     /* ── Layout ── */
     .container { max-width: 880px; margin: 1.75rem auto; padding: 0 1rem; }
@@ -286,9 +333,10 @@
       display: inline-block; padding: 0.15rem 0.55rem; border-radius: 4px;
       font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
     }
-    .tier-LOW       { background: #d1fae5; color: #065f46; }
-    .tier-MEDIUM    { background: #fef3c7; color: #78350f; }
-    .tier-EMERGENCY { background: #fee2e2; color: #7f1d1d; }
+    .tier-LOW          { background: #d1fae5; color: #065f46; }
+    .tier-MEDIUM       { background: #fef3c7; color: #78350f; }
+    .tier-EMERGENCY    { background: #fee2e2; color: #7f1d1d; }
+    .tier-NOT_AFFECTED { background: #dbeafe; color: #1e40af; }
 
     /* ── Print ── */
     @media print {
@@ -307,10 +355,57 @@
 <body>
 
 <header>
-  <span class="badge">CTI</span>
-  <h1>CARVER Risk Assessment Tool</h1>
+  <!-- Optical-prism icon: white input ray → triangle → dispersed spectrum beams -->
+  <svg class="prism-icon" xmlns="http://www.w3.org/2000/svg"
+       viewBox="0 0 52 44" width="42" height="36"
+       overflow="visible" aria-hidden="true">
+    <defs>
+      <linearGradient id="prism-g" x1="20%" y1="100%" x2="80%" y2="0%">
+        <stop offset="0%"   stop-color="rgba(255,255,255,0.11)"/>
+        <stop offset="100%" stop-color="rgba(255,255,255,0.03)"/>
+      </linearGradient>
+    </defs>
+    <!-- Glass body -->
+    <polygon points="26,2 4,42 48,42"
+      fill="url(#prism-g)"
+      stroke="rgba(255,255,255,0.70)"
+      stroke-width="1.6" stroke-linejoin="round"/>
+    <!-- Input ray (white, horizontal, terminates on left face at y=22) -->
+    <line x1="0" y1="22" x2="15" y2="22"
+      stroke="rgba(255,255,255,0.88)" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Dispersed output rays from right face (blue bends most → top; red least → bottom) -->
+    <line x1="37" y1="22" x2="52" y2="9"  stroke="#457b9d" stroke-width="2" stroke-linecap="round"/>
+    <line x1="37" y1="22" x2="52" y2="15" stroke="#2a9d8f" stroke-width="2" stroke-linecap="round"/>
+    <line x1="37" y1="22" x2="52" y2="22" stroke="#d97706" stroke-width="2" stroke-linecap="round"/>
+    <line x1="37" y1="22" x2="52" y2="29" stroke="#ea580c" stroke-width="2" stroke-linecap="round"/>
+    <line x1="37" y1="22" x2="52" y2="35" stroke="#e63946" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  <div class="brand">
+    <span class="brand-name">PRISM</span>
+    <span class="brand-sub">Prioritized Risk Intelligence and Scoring Matrix</span>
+  </div>
+  <button class="sbom-btn" onclick="openSBOM()">SBOM</button>
   <div class="user-pill">Signed in as <strong id="hdr-user">…</strong><a href="/logout" class="signout-link">Sign out</a></div>
 </header>
+
+<!-- SBOM Modal -->
+<div id="sbom-modal" class="sbom-overlay hidden" onclick="closeSBOMOnBg(event)">
+  <div class="sbom-box">
+    <div class="sbom-head">
+      <h2>SOFTWARE BILL OF MATERIALS (SBOM)</h2>
+      <button class="sbom-x" onclick="closeSBOM()" title="Close">&#x2715;</button>
+    </div>
+    <div class="sbom-body">
+      <p class="sbom-gen" id="sbom-gen"></p>
+      <table class="sbom-tbl">
+        <thead>
+          <tr><th>Component</th><th>Installed Version</th><th>Requirement</th></tr>
+        </thead>
+        <tbody id="sbom-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <div class="container">
 
@@ -357,18 +452,31 @@
       <div class="row">
         <div class="fg">
           <label class="lbl">Affected System / Application <span class="opt">optional</span></label>
-          <input type="text" id="f-system" placeholder="e.g. Customer Portal (prod)" />
+          <select id="f-system-status" onchange="handleSystemStatus(this.value)">
+            <option value="">— Enter system name below —</option>
+            <option value="not_affected">Not Affected</option>
+          </select>
+          <input type="text" id="f-system" placeholder="e.g. Customer Portal (prod)" style="margin-top:0.5rem;" />
         </div>
         <div class="fg">
           <label class="lbl">Asset Owner / Team <span class="opt">optional</span></label>
-          <input type="text" id="f-owner" placeholder="e.g. Platform Engineering" />
+          <select id="f-owner" onchange="handleOtherSelect('f-owner')"></select>
+          <input type="text" id="f-owner-other" class="hidden" placeholder="Enter team name…" style="margin-top:0.5rem;" />
         </div>
+      </div>
+
+      <div class="fg hidden" id="fg-confirmed-by">
+        <label class="lbl">Confirmed By <span class="req">*</span></label>
+        <input type="text" id="f-confirmed-by" placeholder="e.g. Security Team / J. Smith" />
+        <div class="hint">Person or team that verified the organization is not affected by this vulnerability.</div>
+        <div class="err-msg" id="e-confirmed-by">Please specify who confirmed the organization is not affected.</div>
       </div>
 
       <div class="row">
         <div class="fg">
           <label class="lbl">Business Unit <span class="opt">optional</span></label>
-          <input type="text" id="f-bu" placeholder="e.g. Finance / Corporate IT" />
+          <select id="f-bu" onchange="handleOtherSelect('f-bu')"></select>
+          <input type="text" id="f-bu-other" class="hidden" placeholder="Enter business unit…" style="margin-top:0.5rem;" />
         </div>
         <div class="fg">
           <label class="lbl">Threat Actor (if known) <span class="opt">optional</span></label>
@@ -389,24 +497,29 @@
       </div>
 
       <div class="fg">
-        <label class="lbl">Additional Notes / References <span class="opt">optional</span></label>
-        <textarea id="f-notes" rows="3" placeholder="Vendor advisory URLs, threat intel report links, affected versions, observations..."></textarea>
+        <label class="lbl">Source Reports <span class="opt">optional</span></label>
+        <textarea id="f-notes" rows="3" placeholder="Source report names, vendor advisory URLs, threat intel references, affected versions, observations..."></textarea>
       </div>
 
       <div class="suggest-box">
         <h4>Suggested fields for thorough documentation</h4>
         <ul>
-          <li>Affected software version(s) — include in notes above or the affected system field</li>
-          <li>Vendor advisory / NVD link — paste into notes for traceability</li>
+          <li>Affected software version(s) — include in the Source Reports field or the affected system field</li>
+          <li>Vendor advisory / NVD link — paste into Source Reports for traceability</li>
           <li>Internal ticket or Jira reference number</li>
           <li>Detection coverage — does your SIEM/EDR detect exploitation attempts?</li>
           <li>Regulatory scope — does a breach require notification (PCI, HIPAA, GDPR)?</li>
         </ul>
       </div>
 
+      <div id="step1-save-status" class="save-status" style="border-radius:6px;margin-top:0.75rem;"></div>
       <div class="nav">
         <span></span>
-        <button class="btn btn-primary" onclick="toStep2()">Next: Pre-Assessment →</button>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="step1-next" onclick="toStep2()">Next: Pre-Assessment →</button>
+          <button class="btn btn-ghost hidden" id="step1-new-btn" onclick="startOver()">New Assessment</button>
+          <button class="btn btn-green hidden" id="step1-log-btn" onclick="logNotAffected()">Log Assessment</button>
+        </div>
       </div>
     </div>
   </div>
@@ -477,11 +590,15 @@
           <div class="cv-score"><div class="num" id="sc-C">—</div><div class="den">/ 5</div></div>
         </div>
         <div class="cv-opts" id="opts-C">
-          <div class="cv-opt" onclick="setCV('C',1,this)" data-sc="1"><span class="lvl">Negligible</span><span class="sc">1</span><span class="dsc">Non-critical; loss has negligible operational impact</span></div>
-          <div class="cv-opt" onclick="setCV('C',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">Non-essential functions; disruption is tolerable</span></div>
-          <div class="cv-opt" onclick="setCV('C',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Important to operations; loss causes notable disruption</span></div>
-          <div class="cv-opt" onclick="setCV('C',4,this)" data-sc="4"><span class="lvl">Significant</span><span class="sc">4</span><span class="dsc">Loss causes major operational failure or downtime</span></div>
-          <div class="cv-opt" onclick="setCV('C',5,this)" data-sc="5"><span class="lvl">Severe</span><span class="sc">5</span><span class="dsc">Loss is catastrophic; operations cannot continue</span></div>
+          <div class="cv-opt" onclick="setCV('C',1,this)" data-sc="1"><span class="lvl">Minimal</span><span class="sc">1</span><span class="dsc">Minimal or no impact on operations (DR Priority 4 & 5)</span></div>
+          <div class="cv-opt" onclick="setCV('C',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">Minor impact/inconvience to operations (DR Priority 3)</span></div>
+          <div class="cv-opt" onclick="setCV('C',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Moderate Impact on operations (DR Priority 2)</span></div>
+          <div class="cv-opt" onclick="setCV('C',4,this)" data-sc="4"><span class="lvl">Major</span><span class="sc">4</span><span class="dsc">Significant impact on business operations (DR Priority 1)</span></div>
+          <div class="cv-opt" onclick="setCV('C',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Loss would cause dramatic impact on business operations (DR Priority 0)</span></div>
+        </div>
+        <div style="margin-top:0.65rem;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.3rem;">Analyst Note <span style="font-weight:400;text-transform:none;font-size:0.7rem;">optional — why this score?</span></label>
+          <textarea id="note-C" rows="2" placeholder="Briefly explain why this score was selected, any context or caveats…"></textarea>
         </div>
         <div class="err-msg" id="e-C">Please select a score for Criticality.</div>
       </div>
@@ -497,11 +614,15 @@
           <div class="cv-score"><div class="num" id="sc-A">—</div><div class="den">/ 5</div></div>
         </div>
         <div class="cv-opts" id="opts-A">
-          <div class="cv-opt" onclick="setCV('A',1,this)" data-sc="1"><span class="lvl">Hardened</span><span class="sc">1</span><span class="dsc">Multiple security layers; physical or insider access required</span></div>
-          <div class="cv-opt" onclick="setCV('A',2,this)" data-sc="2"><span class="lvl">Restricted</span><span class="sc">2</span><span class="dsc">Strong controls; significant effort required to reach</span></div>
-          <div class="cv-opt" onclick="setCV('A',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Reachable with effort; some auth/network barriers present</span></div>
-          <div class="cv-opt" onclick="setCV('A',4,this)" data-sc="4"><span class="lvl">Exposed</span><span class="sc">4</span><span class="dsc">Easily reachable; internet-facing with limited controls</span></div>
-          <div class="cv-opt" onclick="setCV('A',5,this)" data-sc="5"><span class="lvl">Open</span><span class="sc">5</span><span class="dsc">Fully public; no meaningful access controls</span></div>
+          <div class="cv-opt" onclick="setCV('A',1,this)" data-sc="1"><span class="lvl">Minimal</span><span class="sc">1</span><span class="dsc">Extremely difficult to access (e.g., segmented network, air-gapped, disconnected from main network)</span></div>
+          <div class="cv-opt" onclick="setCV('A',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">Difficult to access (e.g., controlled enclave, restricted ACL)</span></div>
+          <div class="cv-opt" onclick="setCV('A',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Accessible but protected (e.g., behind firewall, creds + MFA)</span></div>
+          <div class="cv-opt" onclick="setCV('A',4,this)" data-sc="4"><span class="lvl">Major</span><span class="sc">4</span><span class="dsc">Accessible but monitored (.e.g., activity logging, credentials but no MFA)</span></div>
+          <div class="cv-opt" onclick="setCV('A',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Fully public; no meaningful access controls</span></div>
+        </div>
+        <div style="margin-top:0.65rem;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.3rem;">Analyst Note <span style="font-weight:400;text-transform:none;font-size:0.7rem;">optional — why this score?</span></label>
+          <textarea id="note-A" rows="2" placeholder="Briefly explain why this score was selected, any context or caveats…"></textarea>
         </div>
         <div class="err-msg" id="e-A">Please select a score for Accessibility.</div>
       </div>
@@ -517,11 +638,15 @@
           <div class="cv-score"><div class="num" id="sc-R1">—</div><div class="den">/ 5</div></div>
         </div>
         <div class="cv-opts" id="opts-R1">
-          <div class="cv-opt" onclick="setCV('R1',1,this)" data-sc="1"><span class="lvl">Immediate</span><span class="sc">1</span><span class="dsc">Automated failover; full recovery in hours, no data loss</span></div>
-          <div class="cv-opt" onclick="setCV('R1',2,this)" data-sc="2"><span class="lvl">Short</span><span class="sc">2</span><span class="dsc">Recovery within 1–2 days via standard procedures</span></div>
-          <div class="cv-opt" onclick="setCV('R1',3,this)" data-sc="3"><span class="lvl">Extended</span><span class="sc">3</span><span class="dsc">Days to one week; minor permanent damage possible</span></div>
-          <div class="cv-opt" onclick="setCV('R1',4,this)" data-sc="4"><span class="lvl">Prolonged</span><span class="sc">4</span><span class="dsc">Weeks of recovery; significant resources; likely data loss</span></div>
-          <div class="cv-opt" onclick="setCV('R1',5,this)" data-sc="5"><span class="lvl">Catastrophic</span><span class="sc">5</span><span class="dsc">Months or unrecoverable; irreversible data loss</span></div>
+          <div class="cv-opt" onclick="setCV('R1',1,this)" data-sc="1"><span class="lvl">Minor</span><span class="sc">1</span><span class="dsc">Immediately replacable, restorable, or redundancies in place (DR Priority 4 & 5)</span></div>
+          <div class="cv-opt" onclick="setCV('R1',2,this)" data-sc="2"><span class="lvl">Minimal</span><span class="sc">2</span><span class="dsc">Minimal impact and downtime, reset credentials (DR Priority 3)</span></div>
+          <div class="cv-opt" onclick="setCV('R1',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Delayed restoration or replacement (DR Priority 2)</span></div>
+          <div class="cv-opt" onclick="setCV('R1',4,this)" data-sc="4"><span class="lvl">Major</span><span class="sc">4</span><span class="dsc">Significant impact on business continuity (DR Priority 1)</span></div>
+          <div class="cv-opt" onclick="setCV('R1',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Dramatic impact on business continuity (DR Priority 0)</span></div>
+        </div>
+        <div style="margin-top:0.65rem;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.3rem;">Analyst Note <span style="font-weight:400;text-transform:none;font-size:0.7rem;">optional — why this score?</span></label>
+          <textarea id="note-R1" rows="2" placeholder="Briefly explain why this score was selected, any context or caveats…"></textarea>
         </div>
         <div class="err-msg" id="e-R1">Please select a score for Recoverability.</div>
       </div>
@@ -537,11 +662,15 @@
           <div class="cv-score"><div class="num" id="sc-V">—</div><div class="den">/ 5</div></div>
         </div>
         <div class="cv-opts" id="opts-V">
-          <div class="cv-opt" onclick="setCV('V',1,this)" data-sc="1"><span class="lvl">Negligible</span><span class="sc">1</span><span class="dsc">No known exploit; complex chain; strong mitigating controls</span></div>
-          <div class="cv-opt" onclick="setCV('V',2,this)" data-sc="2"><span class="lvl">Low</span><span class="sc">2</span><span class="dsc">Theoretical exploit; requires high skill and specific conditions</span></div>
-          <div class="cv-opt" onclick="setCV('V',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Known weakness; exploit requires moderate skill or conditions</span></div>
-          <div class="cv-opt" onclick="setCV('V',4,this)" data-sc="4"><span class="lvl">Elevated</span><span class="sc">4</span><span class="dsc">Public exploit code; basic skill sufficient; weak mitigations</span></div>
-          <div class="cv-opt" onclick="setCV('V',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Actively exploited in the wild; trivial; no effective mitigations</span></div>
+          <div class="cv-opt" onclick="setCV('V',1,this)" data-sc="1"><span class="lvl">Minimal</span><span class="sc">1</span><span class="dsc">Not vulnerable, no known exploitation</span></div>
+          <div class="cv-opt" onclick="setCV('V',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">Features enabled; email delivery to endpoints</span></div>
+          <div class="cv-opt" onclick="setCV('V',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">User action required for malicious payload</span></div>
+          <div class="cv-opt" onclick="setCV('V',4,this)" data-sc="4"><span class="lvl">Major</span><span class="sc">4</span><span class="dsc">Actively exploited; No public code available, No user action required</span></div>
+          <div class="cv-opt" onclick="setCV('V',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Actively exploited; Public proof-of-concept, Metasploit module, No user action required</span></div>
+        </div>
+        <div style="margin-top:0.65rem;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.3rem;">Analyst Note <span style="font-weight:400;text-transform:none;font-size:0.7rem;">optional — why this score?</span></label>
+          <textarea id="note-V" rows="2" placeholder="Briefly explain why this score was selected, any context or caveats…"></textarea>
         </div>
         <div class="err-msg" id="e-V">Please select a score for Vulnerability.</div>
       </div>
@@ -557,11 +686,15 @@
           <div class="cv-score"><div class="num" id="sc-E">—</div><div class="den">/ 5</div></div>
         </div>
         <div class="cv-opts" id="opts-E">
-          <div class="cv-opt" onclick="setCV('E',1,this)" data-sc="1"><span class="lvl">Contained</span><span class="sc">1</span><span class="dsc">Isolated impact; no cascading or downstream effects</span></div>
-          <div class="cv-opt" onclick="setCV('E',2,this)" data-sc="2"><span class="lvl">Limited</span><span class="sc">2</span><span class="dsc">Minor effects on a small number of dependent systems</span></div>
-          <div class="cv-opt" onclick="setCV('E',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">Noticeable impact across multiple systems or business units</span></div>
-          <div class="cv-opt" onclick="setCV('E',4,this)" data-sc="4"><span class="lvl">Widespread</span><span class="sc">4</span><span class="dsc">Significant impact across the organization or sector</span></div>
-          <div class="cv-opt" onclick="setCV('E',5,this)" data-sc="5"><span class="lvl">Catastrophic</span><span class="sc">5</span><span class="dsc">National or critical-infrastructure scope; irreversible damage</span></div>
+          <div class="cv-opt" onclick="setCV('E',1,this)" data-sc="1"><span class="lvl">Minimal</span><span class="sc">1</span><span class="dsc">No impact on customers or safety</span></div>
+          <div class="cv-opt" onclick="setCV('E',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">Low or unfavorable impacts</span></div>
+          <div class="cv-opt" onclick="setCV('E',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">DDoS, Sensitive data leak</span></div>
+          <div class="cv-opt" onclick="setCV('E',4,this)" data-sc="4"><span class="lvl">Major</span><span class="sc">4</span><span class="dsc">Limited RCE, DDoS, Configuration change</span></div>
+          <div class="cv-opt" onclick="setCV('E',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Full system access, RCE, obtain admin or root privileges</span></div>
+        </div>
+        <div style="margin-top:0.65rem;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.3rem;">Analyst Note <span style="font-weight:400;text-transform:none;font-size:0.7rem;">optional — why this score?</span></label>
+          <textarea id="note-E" rows="2" placeholder="Briefly explain why this score was selected, any context or caveats…"></textarea>
         </div>
         <div class="err-msg" id="e-E">Please select a score for Effect.</div>
       </div>
@@ -577,11 +710,15 @@
           <div class="cv-score"><div class="num" id="sc-R2">—</div><div class="den">/ 5</div></div>
         </div>
         <div class="cv-opts" id="opts-R2">
-          <div class="cv-opt" onclick="setCV('R2',1,this)" data-sc="1"><span class="lvl">Hidden</span><span class="sc">1</span><span class="dsc">Obscure; adversary needs deep insider knowledge to find it</span></div>
-          <div class="cv-opt" onclick="setCV('R2',2,this)" data-sc="2"><span class="lvl">Internal</span><span class="sc">2</span><span class="dsc">Known to staff only; no meaningful public information</span></div>
-          <div class="cv-opt" onclick="setCV('R2',3,this)" data-sc="3"><span class="lvl">Partial</span><span class="sc">3</span><span class="dsc">Some public info exists; identifiable with research</span></div>
-          <div class="cv-opt" onclick="setCV('R2',4,this)" data-sc="4"><span class="lvl">Known</span><span class="sc">4</span><span class="dsc">Well-documented; easily identified via OSINT</span></div>
-          <div class="cv-opt" onclick="setCV('R2',5,this)" data-sc="5"><span class="lvl">Prominent</span><span class="sc">5</span><span class="dsc">Prominently labeled or advertised; trivially identifiable</span></div>
+          <div class="cv-opt" onclick="setCV('R2',1,this)" data-sc="1"><span class="lvl">Minimal</span><span class="sc">1</span><span class="dsc">System is obfuscated or unique and customized. Recognized and known only by a few individuals</span></div>
+          <div class="cv-opt" onclick="setCV('R2',2,this)" data-sc="2"><span class="lvl">Minor</span><span class="sc">2</span><span class="dsc">System is complex or obscure and difficult to recognize by an outsider (crafted packets)</span></div>
+          <div class="cv-opt" onclick="setCV('R2',3,this)" data-sc="3"><span class="lvl">Moderate</span><span class="sc">3</span><span class="dsc">System can be recognized or identified by determined or skilled actor (active scanning)</span></div>
+          <div class="cv-opt" onclick="setCV('R2',4,this)" data-sc="4"><span class="lvl">Major</span><span class="sc">4</span><span class="dsc">Easily recognized or identified with limited technical expertise (e.g., dig, nslookup)</span></div>
+          <div class="cv-opt" onclick="setCV('R2',5,this)" data-sc="5"><span class="lvl">Critical</span><span class="sc">5</span><span class="dsc">Assets are extremely easy to identify or find</span></div>
+        </div>
+        <div style="margin-top:0.65rem;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.3rem;">Analyst Note <span style="font-weight:400;text-transform:none;font-size:0.7rem;">optional — why this score?</span></label>
+          <textarea id="note-R2" rows="2" placeholder="Briefly explain why this score was selected, any context or caveats…"></textarea>
         </div>
         <div class="err-msg" id="e-R2">Please select a score for Recognizability.</div>
       </div>
@@ -669,7 +806,7 @@
         <button class="btn btn-ghost" onclick="goStep(3)">← Back to Matrix</button>
         <div class="btn-row">
           <button class="btn btn-ghost" onclick="startOver()">New Assessment</button>
-          <button class="btn btn-teal" onclick="window.print()">Print / Save PDF</button>
+          <button class="btn btn-teal" onclick="printAsPDF()">Print / Save PDF</button>
           <button class="btn btn-primary" id="log-btn" onclick="logAssessment()">Log Assessment</button>
         </div>
       </div>
@@ -688,6 +825,8 @@
     <div id="log-body" class="log-body hidden">
       <div class="log-actions">
         <button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportXLSX()">Export Excel (.xlsx)</button>
+        <button class="btn btn-teal  btn-sm" onclick="exportTodayXLSX()" title="Export only today's assessments for appending to the SharePoint list">Export Today (.xlsx)</button>
       </div>
       <table class="log-table">
         <thead>
@@ -709,16 +848,72 @@
 </div>
 
 <script>
+  // ══════════════════════════════════════════════════════════════════════════
+  // CONFIGURE: Update these lists before production deployment.
+  // Add, remove, or rename entries; the dropdowns are built from these arrays.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const OWNER_TEAMS = [
+    'Application Development',
+    'Cloud Operations',
+    'Data & Analytics',
+    'DevOps & Automation',
+    'Infrastructure',
+    'Network Operations',
+    'Platform Engineering',
+    'Security Operations',
+  ];
+
+  const BUSINESS_UNITS = [
+    'Corporate IT',
+    'Executive Office',
+    'Finance',
+    'Human Resources',
+    'Legal & Compliance',
+    'Marketing',
+    'Operations',
+    'Product Development',
+    'Research & Development',
+    'Sales & Business Development',
+  ];
+
+  // ══════════════════════════════════════════════════════════════════════════
+
+  function populateSelect(id, items) {
+    const sel = document.getElementById(id);
+    sel.innerHTML =
+      '<option value="">— Select —</option>' +
+      items.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('') +
+      '<option value="__other__">— Other (specify below) —</option>';
+  }
+
+  function handleOtherSelect(id) {
+    const other = document.getElementById(id + '-other');
+    if (document.getElementById(id).value === '__other__') {
+      other.classList.remove('hidden');
+      other.focus();
+    } else {
+      other.classList.add('hidden');
+      other.value = '';
+    }
+  }
+
   // ── State
-  const ans = { q1: null, q2: null, q3: null };
-  const cv  = { C: null, A: null, R1: null, V: null, E: null, R2: null };
-  const lvl = {};
+  const ans      = { q1: null, q2: null, q3: null };
+  const cv       = { C: null, A: null, R1: null, V: null, E: null, R2: null };
+  const lvl      = {};
+  const dimNotes = { C: '', A: '', R1: '', V: '', E: '', R2: '' };
   const autoSuggestedDims = new Set();
   let emailHTML = '';
   let hasLogged = false;
+  let hasLoggedNotAffected = false;
 
   // Auto-fill today's date
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+  // Populate dropdowns from config arrays above
+  populateSelect('f-owner', OWNER_TEAMS);
+  populateSelect('f-bu', BUSINESS_UNITS);
 
   // Load the log and display the authenticated username on page load
   renderLog().catch(console.error);
@@ -737,6 +932,92 @@
     document.getElementById(`step-${n}`).classList.remove('hidden');
     document.getElementById(`si-${n}`).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Not Affected toggle
+  function handleSystemStatus(val) {
+    const systemInput   = document.getElementById('f-system');
+    const confirmedGrp  = document.getElementById('fg-confirmed-by');
+    const nextBtn       = document.getElementById('step1-next');
+    const logBtn        = document.getElementById('step1-log-btn');
+    const newBtn        = document.getElementById('step1-new-btn');
+    const ss            = document.getElementById('step1-save-status');
+
+    if (val === 'not_affected') {
+      systemInput.classList.add('hidden');
+      systemInput.value = '';
+      confirmedGrp.classList.remove('hidden');
+      nextBtn.classList.add('hidden');
+      newBtn.classList.remove('hidden');
+      logBtn.classList.remove('hidden');
+    } else {
+      systemInput.classList.remove('hidden');
+      confirmedGrp.classList.add('hidden');
+      nextBtn.classList.remove('hidden');
+      newBtn.classList.add('hidden');
+      logBtn.classList.add('hidden');
+      ss.style.display = 'none';
+    }
+    hasLoggedNotAffected = false;
+    logBtn.disabled    = false;
+    logBtn.textContent = 'Log Assessment';
+    logBtn.className   = 'btn btn-green' + (val === 'not_affected' ? '' : ' hidden');
+  }
+
+  // ── Log a Not Affected assessment directly from Step 1
+  async function logNotAffected() {
+    if (hasLoggedNotAffected) return;
+
+    let ok = true;
+    const chk = (id, eid) => {
+      const val = document.getElementById(id).value.trim();
+      const e   = document.getElementById(eid);
+      const el  = document.getElementById(id);
+      if (!val) { e.style.display='block'; el.classList.add('is-err'); ok=false; }
+      else      { e.style.display='none';  el.classList.remove('is-err'); }
+    };
+    chk('f-analyst',      'e-analyst');
+    chk('f-vuln',         'e-vuln');
+    chk('f-confirmed-by', 'e-confirmed-by');
+    if (!ok) return;
+
+    const logBtn = document.getElementById('step1-log-btn');
+    logBtn.disabled    = true;
+    logBtn.textContent = 'Saving…';
+
+    const ss = document.getElementById('step1-save-status');
+    ss.className   = 'save-status';
+    ss.style.display = 'block';
+    ss.textContent   = 'Saving to server…';
+
+    try {
+      await apiPost('/api/assessments', {
+        date:          fv('f-date'),
+        analyst:       fv('f-analyst'),
+        cve:           fv('f-cve'),
+        vuln_name:     fv('f-vuln'),
+        owner:         fv('f-owner'),
+        business_unit: fv('f-bu'),
+        threat_actor:  fv('f-actor'),
+        mitre:         fv('f-mitre'),
+        vpr_score:     fv('f-cvss'),
+        notes:         fv('f-notes'),
+        not_affected:  true,
+        confirmed_by:  fv('f-confirmed-by'),
+        email_html:    buildNotAffectedEmailHTML(),
+      });
+      hasLoggedNotAffected = true;
+      ss.classList.add('ok');
+      ss.textContent = '✓ Assessment saved to server and audit log.';
+      logBtn.textContent = '✓ Logged';
+      logBtn.className   = 'btn btn-green';
+      await renderLog();
+    } catch (err) {
+      ss.classList.add('err');
+      ss.textContent = `⚠ Could not save: ${err.message || 'unknown error'}.`;
+      logBtn.disabled    = false;
+      logBtn.textContent = 'Log Assessment';
+    }
   }
 
   // ── Step 1 → 2
@@ -868,7 +1149,7 @@
     const notes = fv('f-notes');
     if (notes) {
       document.getElementById('rpt-meta').innerHTML +=
-        `<div class="meta-item" style="grid-column:1/-1"><label>Notes / References</label><p style="white-space:pre-wrap">${esc(notes)}</p></div>`;
+        `<div class="meta-item" style="grid-column:1/-1"><label>Source Reports</label><p style="white-space:pre-wrap">${esc(notes)}</p></div>`;
     }
 
     // Pre-assessment tags
@@ -890,14 +1171,21 @@
       ['E',  'Effect',          'Broader, systemic consequences of a successful attack.'],
       ['R2', 'Recognizability', 'Ease of target identification and distinction from other assets.'],
     ];
+    ['C','A','R1','V','E','R2'].forEach(d => {
+      dimNotes[d] = (document.getElementById(`note-${d}`).value || '').trim();
+    });
     document.getElementById('rpt-tbody').innerHTML = dims.map(([d, name, desc]) => {
-      const s = cv[d];
+      const s    = cv[d];
+      const note = dimNotes[d];
+      const noteRow = note
+        ? `<tr><td colspan="4" style="padding:0.25rem 0.875rem 0.55rem;font-size:0.75rem;color:var(--muted);background:#f9fafb;border-bottom:1px solid var(--border);"><strong style="color:var(--text);">Note:</strong> ${esc(note)}</td></tr>`
+        : '';
       return `<tr>
         <td><strong>${name}</strong></td>
         <td style="color:var(--muted);font-size:0.77rem;">${desc}</td>
         <td>${lvl[d]||''}</td>
         <td class="sc-cell" style="color:${scoreColor(s)}">${s}</td>
-      </tr>`;
+      </tr>${noteRow}`;
     }).join('');
 
     const rec = document.getElementById('rpt-rec');
@@ -975,6 +1263,7 @@
         pre_q3:        ans.q3,
         scores:        { ...cv },
         levels:        { ...lvl },
+        dim_notes:     { ...dimNotes },
         total_score:   total,
         risk_tier:     tier,
         email_html:    emailHTML,
@@ -990,6 +1279,79 @@
       logBtn.textContent = 'Log Assessment';
       logBtn.className   = 'btn btn-primary';
     }
+  }
+
+  // ── Email HTML builder — Not Affected assessments
+  function buildNotAffectedEmailHTML() {
+    const accentColor = '#1d4ed8';
+    const heroBg      = '#eff6ff';
+
+    const allMeta = [
+      ['Vulnerability / Threat',      fv('f-vuln')         || '—'],
+      ['CVE Identifier',              fv('f-cve')          || 'N/A'],
+      ['VPR Score',                   fv('f-cvss')         || 'N/A'],
+      ['Analyst',                     fv('f-analyst')      || '—'],
+      ['Assessment Date',             fv('f-date')         || '—'],
+      ['Asset Owner / Team',          fv('f-owner')        || 'N/A'],
+      ['Business Unit',               fv('f-bu')           || 'N/A'],
+      ['Threat Actor',                fv('f-actor')        || 'N/A'],
+      ['MITRE ATT&CK',                fv('f-mitre')        || 'N/A'],
+      ['Confirmed Not Affected By',   fv('f-confirmed-by') || '—'],
+    ].filter(([, v]) => v && v !== 'N/A');
+
+    let metaRows = '';
+    for (let i = 0; i < allMeta.length; i += 2) {
+      const f1 = allMeta[i], f2 = allMeta[i + 1];
+      const cell = (f) => f
+        ? `<td width="50%" valign="top" style="padding:7px 10px;border:1px solid #e5e7eb;background-color:#f9fafb;">
+             <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;margin-bottom:3px;">${f[0]}</div>
+             <div style="font-size:13px;color:#1d3557;font-family:Arial,Helvetica,sans-serif;font-weight:600;">${esc(f[1])}</div>
+           </td>`
+        : `<td width="50%" style="border:1px solid #e5e7eb;background-color:#f9fafb;"></td>`;
+      metaRows += `<tr>${cell(f1)}${cell(f2)}</tr>`;
+    }
+    const notesVal = fv('f-notes');
+    if (notesVal) {
+      metaRows += `<tr><td colspan="2" style="padding:7px 10px;border:1px solid #e5e7eb;background-color:#f9fafb;">
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;margin-bottom:3px;">Source Reports</div>
+        <div style="font-size:12px;color:#374151;font-family:Arial,Helvetica,sans-serif;white-space:pre-wrap;">${esc(notesVal)}</div>
+      </td></tr>`;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>PRISM Assessment — ${esc(fv('f-vuln'))}</title></head>
+<body style="margin:0;padding:20px;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+<table width="680" border="0" cellpadding="0" cellspacing="0" align="center" style="background-color:#ffffff;border:1px solid #d1d5db;">
+  <tr><td bgcolor="#1a2744" style="background-color:#1a2744;padding:16px 20px;border-bottom:3px solid #e63946;">
+    <table border="0" cellpadding="0" cellspacing="0"><tr>
+      <td bgcolor="#e63946" style="background-color:#e63946;padding:3px 8px;"><span style="color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;">PRISM</span></td>
+      <td style="padding-left:12px;"><span style="color:#ffffff;font-size:15px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">PRISM Risk Assessment Report</span></td>
+    </tr></table>
+  </td></tr>
+  <tr><td bgcolor="${heroBg}" align="center" style="background-color:${heroBg};padding:28px 20px;border-bottom:1px solid #bfdbfe;">
+    <div style="font-size:10px;color:#1e40af;text-transform:uppercase;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;margin-bottom:8px;">ASSESSMENT DETERMINATION</div>
+    <div style="font-size:42px;font-weight:900;color:${accentColor};font-family:Arial,Helvetica,sans-serif;line-height:1;">NOT AFFECTED</div>
+    <div style="font-size:11px;font-weight:700;color:${accentColor};text-transform:uppercase;letter-spacing:3px;font-family:Arial,Helvetica,sans-serif;margin-top:10px;">PRISM Scoring Not Required</div>
+  </td></tr>
+  <tr><td style="padding:16px 20px 8px 20px;">
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#6b7280;font-family:Arial,Helvetica,sans-serif;padding-bottom:6px;border-bottom:1px solid #e5e7eb;margin-bottom:10px;">ASSESSMENT INFORMATION</div>
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">${metaRows}</table>
+  </td></tr>
+  <tr><td style="padding:16px 20px 20px 20px;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0"><tr>
+      <td bgcolor="${heroBg}" style="background-color:${heroBg};padding:14px 16px;border-left:4px solid ${accentColor};">
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:${accentColor};font-family:Arial,Helvetica,sans-serif;margin-bottom:6px;">NOT AFFECTED — No Remediation Action Required</div>
+        <div style="font-size:13px;color:#374151;font-family:Arial,Helvetica,sans-serif;line-height:1.6;">The organisation has been assessed as not affected by this vulnerability. PRISM scoring was not required. The determination has been confirmed and logged for audit purposes.</div>
+      </td>
+    </tr></table>
+  </td></tr>
+  <tr><td bgcolor="#f3f4f6" align="center" style="background-color:#f3f4f6;padding:10px 20px;border-top:1px solid #e5e7eb;">
+    <span style="font-size:10px;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;">Generated by PRISM &mdash; ${esc(fv('f-date'))} &mdash; Analyst: ${esc(fv('f-analyst'))}</span>
+  </td></tr>
+</table>
+</body>
+</html>`;
   }
 
   // ── Email HTML builder (unchanged from standalone version)
@@ -1024,7 +1386,7 @@
     const notesVal = fv('f-notes');
     if (notesVal) {
       metaRows += `<tr><td colspan="2" style="padding:7px 10px;border:1px solid #e5e7eb;background-color:#f9fafb;">
-        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;margin-bottom:3px;">Notes / References</div>
+        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-family:Arial,Helvetica,sans-serif;margin-bottom:3px;">Source Reports</div>
         <div style="font-size:12px;color:#374151;font-family:Arial,Helvetica,sans-serif;white-space:pre-wrap;">${esc(notesVal)}</div>
       </td></tr>`;
     }
@@ -1037,27 +1399,31 @@
     }).join('');
 
     const scClr = s => s>=5?'#c0392b':s>=4?'#ea580c':s>=3?'#d97706':'#2a9d8f';
-    const carverRows = dims.map(([d, name]) =>
-      `<tr>
+    const carverRows = dims.map(([d, name]) => {
+      const note = dimNotes[d];
+      const noteRow = note
+        ? `<tr><td colspan="3" style="padding:4px 12px 8px;border:1px solid #e5e7eb;background-color:#f9fafb;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b7280;"><span style="font-weight:700;color:#374151;">Note:</span> ${esc(note)}</td></tr>`
+        : '';
+      return `<tr>
         <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#1d3557;">${name}</td>
         <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6b7280;">${lvl[d]||''}</td>
         <td align="center" style="padding:8px 12px;border:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;color:${scClr(cv[d])};">${cv[d]}</td>
-      </tr>`
-    ).join('');
+      </tr>${noteRow}`;
+    }).join('');
 
     return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>CARVER Assessment — ${esc(fv('f-vuln'))}</title></head>
+<head><meta charset="UTF-8"><title>PRISM Assessment — ${esc(fv('f-vuln'))}</title></head>
 <body style="margin:0;padding:20px;background-color:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
 <table width="680" border="0" cellpadding="0" cellspacing="0" align="center" style="background-color:#ffffff;border:1px solid #d1d5db;">
   <tr><td bgcolor="#1a2744" style="background-color:#1a2744;padding:16px 20px;border-bottom:3px solid #e63946;">
     <table border="0" cellpadding="0" cellspacing="0"><tr>
-      <td bgcolor="#e63946" style="background-color:#e63946;padding:3px 8px;"><span style="color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;">CTI</span></td>
-      <td style="padding-left:12px;"><span style="color:#ffffff;font-size:15px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">CARVER Risk Assessment Report</span></td>
+      <td bgcolor="#e63946" style="background-color:#e63946;padding:3px 8px;"><span style="color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;">PRISM</span></td>
+      <td style="padding-left:12px;"><span style="color:#ffffff;font-size:15px;font-weight:bold;font-family:Arial,Helvetica,sans-serif;">PRISM Risk Assessment Report</span></td>
     </tr></table>
   </td></tr>
   <tr><td bgcolor="${heroBg}" align="center" style="background-color:${heroBg};padding:28px 20px;border-bottom:1px solid #e5e7eb;">
-    <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;margin-bottom:8px;">CARVER TOTAL SCORE</div>
+    <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;font-family:Arial,Helvetica,sans-serif;margin-bottom:8px;">PRISM TOTAL SCORE</div>
     <div style="font-size:52px;font-weight:900;color:${accentColor};font-family:Arial,Helvetica,sans-serif;line-height:1;">${total}</div>
     <div style="font-size:11px;font-weight:800;color:${accentColor};text-transform:uppercase;letter-spacing:4px;font-family:Arial,Helvetica,sans-serif;margin-top:8px;">${tier} RISK &nbsp;|&nbsp; Score: ${total} / 30</div>
   </td></tr>
@@ -1079,7 +1445,7 @@
       </tr>
       ${carverRows}
       <tr>
-        <td colspan="2" align="right" style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:700;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1d3557;">Total CARVER Score</td>
+        <td colspan="2" align="right" style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:700;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1d3557;">Total PRISM Score</td>
         <td align="center" style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:900;font-size:16px;color:${accentColor};font-family:Arial,Helvetica,sans-serif;">${total} / 30</td>
       </tr>
     </table>
@@ -1093,7 +1459,7 @@
     </tr></table>
   </td></tr>
   <tr><td bgcolor="#f3f4f6" align="center" style="background-color:#f3f4f6;padding:10px 20px;border-top:1px solid #e5e7eb;">
-    <span style="font-size:10px;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;">Generated by CARVER Risk Assessment Tool &mdash; ${esc(fv('f-date'))} &mdash; Analyst: ${esc(fv('f-analyst'))}</span>
+    <span style="font-size:10px;color:#9ca3af;font-family:Arial,Helvetica,sans-serif;">Generated by PRISM &mdash; ${esc(fv('f-date'))} &mdash; Analyst: ${esc(fv('f-analyst'))}</span>
   </td></tr>
 </table>
 </body>
@@ -1125,11 +1491,26 @@
     setTimeout(() => btn.textContent = 'Copy for Outlook', 3000);
   }
 
+  function printAsPDF() {
+    const slugify = s => s.replace(/[^a-zA-Z0-9\-]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    const parts = [];
+    const cve  = fv('f-cve');
+    const vuln = fv('f-vuln');
+    const date = fv('f-date');
+    if (cve)  parts.push(slugify(cve));
+    if (vuln) parts.push(slugify(vuln));
+    if (date) parts.push(date);
+    const origTitle = document.title;
+    document.title = parts.length ? parts.join('_') : 'PRISM_Assessment';
+    window.addEventListener('afterprint', () => { document.title = origTitle; }, { once: true });
+    window.print();
+  }
+
   function downloadHTML() {
     const a = document.createElement('a');
-    const name = (fv('f-vuln') || 'carver-report').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+    const name = (fv('f-vuln') || 'prism-report').replace(/[^a-z0-9]/gi,'_').toLowerCase();
     a.href = URL.createObjectURL(new Blob([emailHTML], { type: 'text/html' }));
-    a.download = `${name}_carver_report.html`;
+    a.download = `${name}_prism_report.html`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1192,16 +1573,18 @@
         return;
       }
       tbody.innerHTML = log.map(e => {
-        const cveLabel = e.cve && e.cve !== 'N/A' ? ` <span style="color:var(--muted);font-size:0.72rem;">(${e.cve})</span>` : '';
-        const tierClr  = e.risk_tier==='LOW' ? '#2a9d8f' : e.risk_tier==='MEDIUM' ? '#d97706' : '#e63946';
+        const cveLabel    = e.cve && e.cve !== 'N/A' ? ` <span style="color:var(--muted);font-size:0.72rem;">(${e.cve})</span>` : '';
+        const notAffected = e.risk_tier === 'NOT_AFFECTED';
+        const tierClr     = e.risk_tier==='LOW' ? '#2a9d8f' : e.risk_tier==='MEDIUM' ? '#d97706' : notAffected ? '#1e40af' : '#e63946';
+        const scoreCell   = notAffected ? '—' : `${e.total_score} / 30`;
         return `<tr>
           <td style="font-size:0.75rem;color:var(--muted);">${e.created_at}</td>
           <td><strong>${esc(e.authenticated_as)}</strong></td>
           <td>${esc(e.analyst)}</td>
           <td>${esc(e.vuln_name)}${cveLabel}</td>
           <td>${esc(e.system || '—')}</td>
-          <td style="font-weight:700;color:${tierClr};">${e.total_score} / 30</td>
-          <td><span class="tier-badge tier-${e.risk_tier}">${e.risk_tier}</span></td>
+          <td style="font-weight:700;color:${tierClr};">${scoreCell}</td>
+          <td><span class="tier-badge tier-${e.risk_tier}">${e.risk_tier.replace('_',' ')}</span></td>
           <td>
             <div style="display:flex;gap:0.4rem;">
               <a href="/api/assessments/${e.id}/report" class="btn btn-ghost btn-sm">Report</a>
@@ -1229,6 +1612,35 @@
     window.location = '/api/assessments/export';
   }
 
+  function exportXLSX() {
+    window.location = '/api/assessments/export/xlsx';
+  }
+
+  async function exportTodayXLSX() {
+    try {
+      const resp = await fetch('/api/assessments/export/xlsx?today=1', {
+        credentials: 'same-origin',
+      });
+      if (resp.status === 404) {
+        const body = await resp.json().catch(() => ({}));
+        alert(body.error || 'No assessments recorded today.');
+        return;
+      }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const cd   = resp.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename=([^\s;]+)/);
+      a.href     = url;
+      a.download = match ? match[1] : 'prism_assessments_today.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    }
+  }
+
   function toggleLog() {
     document.getElementById('log-body').classList.toggle('hidden');
     document.getElementById('log-toggle').classList.toggle('open');
@@ -1243,14 +1655,39 @@
     hasLogged = false;
     emailHTML = '';
 
-    ['f-analyst','f-cve','f-cvss','f-vuln','f-system','f-owner',
-     'f-bu','f-actor','f-mitre','f-notes'].forEach(id =>
+    ['f-analyst','f-cve','f-cvss','f-vuln','f-system',
+     'f-actor','f-mitre','f-notes','f-confirmed-by'].forEach(id =>
       document.getElementById(id).value = '');
+    document.getElementById('f-owner').value = '';
+    document.getElementById('f-bu').value = '';
+    ['f-owner-other','f-bu-other'].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = '';
+      el.classList.add('hidden');
+    });
+    document.getElementById('f-system-status').value = '';
+    document.getElementById('f-system').classList.remove('hidden');
+    document.getElementById('fg-confirmed-by').classList.add('hidden');
+    document.getElementById('step1-next').classList.remove('hidden');
+    document.getElementById('step1-new-btn').classList.add('hidden');
+    document.getElementById('step1-log-btn').classList.add('hidden');
+    document.getElementById('step1-new-btn').className   = 'btn btn-ghost hidden';
+    document.getElementById('step1-log-btn').disabled    = false;
+    document.getElementById('step1-log-btn').textContent = 'Log Assessment';
+    document.getElementById('step1-log-btn').className   = 'btn btn-green hidden';
+    const ss1 = document.getElementById('step1-save-status');
+    ss1.style.display = 'none';
+    ss1.className = 'save-status';
+    hasLoggedNotAffected = false;
     document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
 
     document.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('sel-yes','sel-no'));
     document.querySelectorAll('.cv-opt').forEach(o => o.classList.remove('sel'));
-    ['C','A','R1','V','E','R2'].forEach(d => document.getElementById(`sc-${d}`).textContent = '—');
+    ['C','A','R1','V','E','R2'].forEach(d => {
+      document.getElementById(`sc-${d}`).textContent = '—';
+      dimNotes[d] = '';
+      document.getElementById(`note-${d}`).value = '';
+    });
     document.querySelectorAll('.err-msg').forEach(e => e.style.display = 'none');
     document.querySelectorAll('.is-err').forEach(e => e.classList.remove('is-err'));
     document.getElementById('suggest-banner').style.display = 'none';
@@ -1271,12 +1708,57 @@
   }
 
   // ── Helpers
-  function fv(id) { return (document.getElementById(id).value || '').trim(); }
+  function fv(id) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    const val = (el.value || '').trim();
+    if (el.tagName === 'SELECT' && val === '__other__') {
+      const other = document.getElementById(id + '-other');
+      return other ? (other.value || '').trim() : '';
+    }
+    return val;
+  }
   function esc(s) {
     return String(s||'')
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  // ── SBOM modal ─────────────────────────────────────────────────────────────
+  async function openSBOM() {
+    const modal = document.getElementById('sbom-modal');
+    modal.classList.remove('hidden');
+    document.getElementById('sbom-gen').textContent = '';
+    document.getElementById('sbom-tbody').innerHTML =
+      '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:1rem 0;">Loading…</td></tr>';
+    try {
+      const resp = await fetch('/api/sbom', { credentials: 'same-origin' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      document.getElementById('sbom-gen').textContent =
+        'Generated: ' + data.generated + '  ·  ' + data.components.length + ' direct dependencies';
+      document.getElementById('sbom-tbody').innerHTML = data.components.map(c =>
+        '<tr>' +
+        '<td><strong>' + esc(c.name) + '</strong></td>' +
+        '<td><code>' + esc(c.version) + '</code></td>' +
+        '<td style="color:var(--muted);font-size:0.77rem;">' + esc(c.constraint) + '</td>' +
+        '</tr>'
+      ).join('');
+    } catch (err) {
+      document.getElementById('sbom-tbody').innerHTML =
+        '<tr><td colspan="3" style="color:var(--accent);text-align:center;padding:1rem 0;">' +
+        'Could not load SBOM: ' + esc(err.message) + '</td></tr>';
+    }
+  }
+  function closeSBOM() {
+    document.getElementById('sbom-modal').classList.add('hidden');
+  }
+  function closeSBOMOnBg(e) {
+    if (e.target === e.currentTarget) closeSBOM();
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSBOM();
+  });
 </script>
 
 </body>

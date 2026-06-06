@@ -21,8 +21,10 @@ Changelog:
       headers clarified with full dimension names.
 """
 import csv
+import importlib.metadata
 import io
 import os
+import re
 import secrets
 import sqlite3
 from datetime import datetime, timezone
@@ -41,10 +43,10 @@ app = Flask(__name__)
 # see the real client IP when running behind nginx.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-# Load a stable secret key from the environment (set CARVER_SECRET_KEY in production).
+# Load a stable secret key from the environment (set PRISM_SECRET_KEY in production).
 # Falls back to a random key so gunicorn workers each get a unique value — fine for
 # current usage (no cross-worker sessions), but set the env var for production.
-app.config["SECRET_KEY"] = os.environ.get("CARVER_SECRET_KEY") or secrets.token_hex(32)
+app.config["SECRET_KEY"] = os.environ.get("PRISM_SECRET_KEY") or secrets.token_hex(32)
 
 # 60 req/min per IP.  With multiple gunicorn workers the effective ceiling is
 # workers × 60 because each worker tracks its own in-memory counters; switch
@@ -153,6 +155,14 @@ def init_db():
     for stmt in (
         "ALTER TABLE assessments ADD COLUMN deleted_at TEXT",
         "ALTER TABLE assessments ADD COLUMN deleted_by TEXT",
+        "ALTER TABLE assessments ADD COLUMN not_affected INTEGER DEFAULT 0",
+        "ALTER TABLE assessments ADD COLUMN confirmed_by TEXT",
+        "ALTER TABLE assessments ADD COLUMN note_c  TEXT",
+        "ALTER TABLE assessments ADD COLUMN note_a  TEXT",
+        "ALTER TABLE assessments ADD COLUMN note_r1 TEXT",
+        "ALTER TABLE assessments ADD COLUMN note_v  TEXT",
+        "ALTER TABLE assessments ADD COLUMN note_e  TEXT",
+        "ALTER TABLE assessments ADD COLUMN note_r2 TEXT",
     ):
         try:
             conn.execute(stmt)
@@ -220,7 +230,8 @@ def _assessment_fields(data, scores, total, tier, email_html):
     are server-computed or server-sanitized and must never be taken directly
     from the client payload.
     """
-    levels = data.get("levels", {})
+    levels    = data.get("levels", {})
+    dim_notes = data.get("dim_notes", {})
     return (
         data.get("date"),
         data.get("analyst"),
@@ -248,9 +259,17 @@ def _assessment_fields(data, scores, total, tier, email_html):
         levels.get("V"),
         levels.get("E"),
         levels.get("R2"),
+        dim_notes.get("C") or None,
+        dim_notes.get("A") or None,
+        dim_notes.get("R1") or None,
+        dim_notes.get("V") or None,
+        dim_notes.get("E") or None,
+        dim_notes.get("R2") or None,
         total,
         tier,
         email_html,
+        1 if data.get("not_affected") else 0,
+        data.get("confirmed_by") or None,
     )
 
 
@@ -366,15 +385,30 @@ def save_assessment():
     if not data:
         return jsonify({"error": "No JSON body provided"}), 400
 
-    required = ("date", "analyst", "vuln_name", "pre_q1", "pre_q2", "pre_q3")
-    missing = [f for f in required if not data.get(f)]
+    always_required = ("date", "analyst", "vuln_name")
+    missing = [f for f in always_required if not data.get(f)]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
 
-    try:
-        scores, total, tier = _validate_scores(data)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+    not_affected = bool(data.get("not_affected"))
+    if not_affected:
+        if not data.get("confirmed_by"):
+            return jsonify({"error": "Missing required field: confirmed_by"}), 400
+        data.setdefault("pre_q1", "n/a")
+        data.setdefault("pre_q2", "n/a")
+        data.setdefault("pre_q3", "n/a")
+        scores = {"C": 0, "A": 0, "R1": 0, "V": 0, "E": 0, "R2": 0}
+        total, tier = 0, "NOT_AFFECTED"
+    else:
+        extra_required = ("pre_q1", "pre_q2", "pre_q3")
+        missing = [f for f in extra_required if not data.get(f)]
+        if missing:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
+        try:
+            scores, total, tier = _validate_scores(data)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
     email_html = _sanitize_html(data.get("email_html"))
 
     db = get_db()
@@ -387,14 +421,18 @@ def save_assessment():
             pre_q1, pre_q2, pre_q3,
             score_c, score_a, score_r1, score_v, score_e, score_r2,
             level_c, level_a, level_r1, level_v, level_e, level_r2,
-            total_score, risk_tier, email_html
+            note_c, note_a, note_r1, note_v, note_e, note_r2,
+            total_score, risk_tier, email_html,
+            not_affected, confirmed_by
         ) VALUES (
             ?,
             ?,?,?,?,?,?,?,?,?,?,?,
             ?,?,?,
             ?,?,?,?,?,?,
             ?,?,?,?,?,?,
-            ?,?,?
+            ?,?,?,?,?,?,
+            ?,?,?,
+            ?,?
         )
         """,
         (g.current_user, *_assessment_fields(data, scores, total, tier, email_html)),
@@ -428,15 +466,30 @@ def update_assessment(aid):
     if not data:
         return jsonify({"error": "No JSON body provided"}), 400
 
-    required = ("date", "analyst", "vuln_name", "pre_q1", "pre_q2", "pre_q3")
-    missing = [f for f in required if not data.get(f)]
+    always_required = ("date", "analyst", "vuln_name")
+    missing = [f for f in always_required if not data.get(f)]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
 
-    try:
-        scores, total, tier = _validate_scores(data)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+    not_affected = bool(data.get("not_affected"))
+    if not_affected:
+        if not data.get("confirmed_by"):
+            return jsonify({"error": "Missing required field: confirmed_by"}), 400
+        data.setdefault("pre_q1", "n/a")
+        data.setdefault("pre_q2", "n/a")
+        data.setdefault("pre_q3", "n/a")
+        scores = {"C": 0, "A": 0, "R1": 0, "V": 0, "E": 0, "R2": 0}
+        total, tier = 0, "NOT_AFFECTED"
+    else:
+        extra_required = ("pre_q1", "pre_q2", "pre_q3")
+        missing = [f for f in extra_required if not data.get(f)]
+        if missing:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
+        try:
+            scores, total, tier = _validate_scores(data)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
     email_html = _sanitize_html(data.get("email_html"))
 
     db = get_db()
@@ -479,9 +532,17 @@ def update_assessment(aid):
             level_v       = ?,
             level_e       = ?,
             level_r2      = ?,
+            note_c        = ?,
+            note_a        = ?,
+            note_r1       = ?,
+            note_v        = ?,
+            note_e        = ?,
+            note_r2       = ?,
             total_score   = ?,
             risk_tier     = ?,
-            email_html    = ?
+            email_html    = ?,
+            not_affected  = ?,
+            confirmed_by  = ?
         WHERE id = ?
         """,
         (*_assessment_fields(data, scores, total, tier, email_html), aid),
@@ -550,19 +611,19 @@ def export_csv():
         """
         SELECT
             id, created_at, authenticated_as, date, analyst,
-            cve, vuln_name, system, owner, business_unit,
-            threat_actor, mitre, vpr_score,
+            cve, vuln_name, system, not_affected, confirmed_by, owner, business_unit,
+            threat_actor, mitre, vpr_score, notes,
             -- Pre-assessment flags (in form order)
             pre_q1, pre_q2, pre_q3,
             -- CARVER scores and their human-readable level labels,
             -- exported as adjacent pairs so the CSV is self-documenting.
-            score_c,  level_c,
-            score_a,  level_a,
-            score_r1, level_r1,
-            score_v,  level_v,
-            score_e,  level_e,
-            score_r2, level_r2,
-            total_score, risk_tier, notes
+            score_c,  level_c,  note_c,
+            score_a,  level_a,  note_a,
+            score_r1, level_r1, note_r1,
+            score_v,  level_v,  note_v,
+            score_e,  level_e,  note_e,
+            score_r2, level_r2, note_r2,
+            total_score, risk_tier
         FROM assessments
         WHERE deleted_at IS NULL
         ORDER BY created_at DESC
@@ -584,26 +645,28 @@ def export_csv():
         "CVE",
         "Vulnerability / Threat",
         "Affected System",
+        "Not Affected",
+        "Confirmed By",
         "Asset Owner",
         "Business Unit",
         "Threat Actor",
         "MITRE ATT&CK",
         "VPR Score",
+        "Source Reports",
         # Pre-assessment questions — full text matches the form labels.
         "Actively Exploited in the Wild? (yes/no)",
         "Public PoC Exploit Available? (yes/no)",
         "Asset Externally Accessible / Internet-Facing? (yes/no)",
         # CARVER dimensions: score then level label, six pairs.
-        "C – Criticality (Score)",        "C – Criticality (Level)",
-        "A – Accessibility (Score)",      "A – Accessibility (Level)",
-        "R – Recuperability (Score)",     "R – Recuperability (Level)",
-        "V – Vulnerability (Score)",      "V – Vulnerability (Level)",
-        "E – Effect (Score)",             "E – Effect (Level)",
-        "R – Recognizability (Score)",    "R – Recognizability (Level)",
+        "C – Criticality (Score)",        "C – Criticality (Level)",        "C – Criticality (Notes)",
+        "A – Accessibility (Score)",      "A – Accessibility (Level)",      "A – Accessibility (Notes)",
+        "R – Recuperability (Score)",     "R – Recuperability (Level)",     "R – Recuperability (Notes)",
+        "V – Vulnerability (Score)",      "V – Vulnerability (Level)",      "V – Vulnerability (Notes)",
+        "E – Effect (Score)",             "E – Effect (Level)",             "E – Effect (Notes)",
+        "R – Recognizability (Score)",    "R – Recognizability (Level)",    "R – Recognizability (Notes)",
         # Totals.
         "Total Score (/30)",
         "Risk Tier",
-        "Notes",
     ])
 
     for r in rows:
@@ -616,25 +679,27 @@ def export_csv():
             r["cve"],
             r["vuln_name"],
             r["system"],
+            "Yes" if r["not_affected"] else "No",
+            r["confirmed_by"] or "",
             r["owner"],
             r["business_unit"],
             r["threat_actor"],
             r["mitre"],
             r["vpr_score"],
+            r["notes"] or "",
             # Pre-assessment answers (order matches pre_q1/2/3 above).
             r["pre_q1"],
             r["pre_q2"],
             r["pre_q3"],
             # CARVER score+level pairs.
-            r["score_c"],  r["level_c"],
-            r["score_a"],  r["level_a"],
-            r["score_r1"], r["level_r1"],
-            r["score_v"],  r["level_v"],
-            r["score_e"],  r["level_e"],
-            r["score_r2"], r["level_r2"],
+            r["score_c"],  r["level_c"],  r["note_c"]  or "",
+            r["score_a"],  r["level_a"],  r["note_a"]  or "",
+            r["score_r1"], r["level_r1"], r["note_r1"] or "",
+            r["score_v"],  r["level_v"],  r["note_v"]  or "",
+            r["score_e"],  r["level_e"],  r["note_e"]  or "",
+            r["score_r2"], r["level_r2"], r["note_r2"] or "",
             r["total_score"],
             r["risk_tier"],
-            r["notes"],
         ])
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -642,6 +707,158 @@ def export_csv():
     return Response(
         out.getvalue(),
         mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.route("/api/assessments/export/xlsx")
+@require_auth
+def export_xlsx():
+    """
+    Export all assessments as a formatted Excel workbook (.xlsx).
+
+    Designed for SharePoint's Create List from Excel / Import Spreadsheet
+    workflow.  The workbook includes:
+      - Frozen header row (navy / white, matching the app colour scheme)
+      - Risk Tier cells colour-coded by severity
+      - Auto-fitted column widths (capped at 55 characters)
+      - Score columns stored as integers so SharePoint treats them as numbers
+    """
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+    except ImportError:
+        return jsonify({"error": "openpyxl is not installed in this environment"}), 500
+
+    today_only = request.args.get("today") == "1"
+    today_date = datetime.now().strftime("%Y-%m-%d")
+
+    # CAST(? AS INTEGER) = 0  →  today_only is False  →  no date filter (all rows)
+    # CAST(? AS INTEGER) = 1  →  today_only is True   →  restrict to date = today_date
+    db   = get_db()
+    rows = db.execute(
+        """
+        SELECT
+            id, created_at, authenticated_as, date, analyst,
+            cve, vuln_name, system, not_affected, confirmed_by, owner, business_unit,
+            threat_actor, mitre, vpr_score, notes,
+            pre_q1, pre_q2, pre_q3,
+            score_c,  level_c,  note_c,
+            score_a,  level_a,  note_a,
+            score_r1, level_r1, note_r1,
+            score_v,  level_v,  note_v,
+            score_e,  level_e,  note_e,
+            score_r2, level_r2, note_r2,
+            total_score, risk_tier
+        FROM assessments
+        WHERE deleted_at IS NULL
+          AND (CAST(? AS INTEGER) = 0 OR date = ?)
+        ORDER BY created_at DESC
+        """,
+        (int(today_only), today_date),
+    ).fetchall()
+
+    if today_only and not rows:
+        return jsonify({"error": f"No assessments recorded for {today_date}."}), 404
+
+    headers = [
+        "ID", "Server Timestamp (UTC)", "Authenticated As",
+        "Assessment Date", "Analyst",
+        "CVE", "Vulnerability / Threat", "Affected System",
+        "Not Affected", "Confirmed By",
+        "Asset Owner", "Business Unit", "Threat Actor",
+        "MITRE ATT&CK", "VPR Score",
+        "Source Reports",
+        "Actively Exploited in the Wild?",
+        "Public PoC Exploit Available?",
+        "Asset Externally Accessible / Internet-Facing?",
+        "C – Criticality (Score)",      "C – Criticality (Level)",      "C – Criticality (Notes)",
+        "A – Accessibility (Score)",    "A – Accessibility (Level)",    "A – Accessibility (Notes)",
+        "R – Recuperability (Score)",   "R – Recuperability (Level)",   "R – Recuperability (Notes)",
+        "V – Vulnerability (Score)",    "V – Vulnerability (Level)",    "V – Vulnerability (Notes)",
+        "E – Effect (Score)",           "E – Effect (Level)",           "E – Effect (Notes)",
+        "R – Recognizability (Score)",  "R – Recognizability (Level)",  "R – Recognizability (Notes)",
+        "Total Score (/30)", "Risk Tier",
+    ]
+
+    tier_fills = {
+        "LOW":          PatternFill("solid", fgColor="D1FAE5"),
+        "MEDIUM":       PatternFill("solid", fgColor="FEF3C7"),
+        "EMERGENCY":    PatternFill("solid", fgColor="FEE2E2"),
+        "NOT_AFFECTED": PatternFill("solid", fgColor="DBEAFE"),
+    }
+    tier_col = headers.index("Risk Tier") + 1  # openpyxl columns are 1-based
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "CARVER Assessments"
+
+    # Header row — navy background, white bold text.
+    ws.append(headers)
+    hdr_font = Font(bold=True, color="FFFFFF")
+    hdr_fill = PatternFill("solid", fgColor="1A2744")
+    for cell in ws[1]:
+        cell.font = hdr_font
+        cell.fill = hdr_fill
+        cell.alignment = Alignment(wrap_text=False)
+
+    ws.freeze_panes = "A2"  # keep headers visible while scrolling
+
+    # Data rows.
+    for r in rows:
+        ws.append([
+            r["id"],
+            r["created_at"],
+            r["authenticated_as"],
+            r["date"],
+            r["analyst"],
+            r["cve"]          or "",
+            r["vuln_name"],
+            r["system"]       or "",
+            "Yes" if r["not_affected"] else "No",
+            r["confirmed_by"] or "",
+            r["owner"]        or "",
+            r["business_unit"] or "",
+            r["threat_actor"] or "",
+            r["mitre"]        or "",
+            r["vpr_score"]    or "",
+            r["notes"]        or "",
+            r["pre_q1"],
+            r["pre_q2"],
+            r["pre_q3"],
+            r["score_c"],  r["level_c"]  or "", r["note_c"]  or "",
+            r["score_a"],  r["level_a"]  or "", r["note_a"]  or "",
+            r["score_r1"], r["level_r1"] or "", r["note_r1"] or "",
+            r["score_v"],  r["level_v"]  or "", r["note_v"]  or "",
+            r["score_e"],  r["level_e"]  or "", r["note_e"]  or "",
+            r["score_r2"], r["level_r2"] or "", r["note_r2"] or "",
+            r["total_score"],
+            r["risk_tier"],
+        ])
+        tier = r["risk_tier"]
+        if tier in tier_fills:
+            ws.cell(row=ws.max_row, column=tier_col).fill = tier_fills[tier]
+
+    # Auto-fit column widths (capped so wide notes columns don't blow out the sheet).
+    for col_cells in ws.columns:
+        max_len = max(
+            len(str(cell.value)) if cell.value is not None else 0
+            for cell in col_cells
+        )
+        ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 3, 55)
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = (
+        f"carver_assessments_{today_date}.xlsx"
+        if today_only
+        else f"carver_assessments_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
+    )
+    return Response(
+        output.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
@@ -696,6 +913,38 @@ def download_report(aid):
 def me():
     """Return the authenticated username so the frontend can display it."""
     return jsonify({"username": g.current_user})
+
+
+# ── SBOM ──────────────────────────────────────────────────────────────────────
+
+@app.route("/api/sbom")
+@require_auth
+def sbom():
+    """Return direct dependencies with resolved installed versions (CISA SBOM practice)."""
+    req_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+    components = []
+    try:
+        with open(req_path) as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                name = re.split(r"[\s><=!~\[;]", line)[0]
+                try:
+                    version = importlib.metadata.version(name)
+                except importlib.metadata.PackageNotFoundError:
+                    version = "not installed"
+                components.append({
+                    "name":       name,
+                    "version":    version,
+                    "constraint": line,
+                })
+    except FileNotFoundError:
+        pass
+    return jsonify({
+        "generated":  datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "components": components,
+    })
 
 
 # ── Logout ────────────────────────────────────────────────────────────────────
