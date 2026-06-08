@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CARVER Risk Assessment Tool — Flask/SQLite backend
+PRISM Risk Assessment Tool — Flask/SQLite backend
 
 Quick start:
     pip install -r requirements.txt
@@ -183,7 +183,7 @@ def _log_action(action, assessment_id=None, detail=None):
 
 # ── HTTP Basic Auth ───────────────────────────────────────────────────────────
 
-REALM = "CARVER Risk Assessment Tool"
+REALM = "PRISM Risk Assessment Tool"
 
 
 def require_auth(f):
@@ -703,7 +703,7 @@ def export_csv():
         ])
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"carver_assessments_{stamp}.csv"
+    filename = f"prism_assessments_{stamp}.csv"
     return Response(
         out.getvalue(),
         mimetype="text/csv",
@@ -791,7 +791,7 @@ def export_xlsx():
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "CARVER Assessments"
+    ws.title = "PRISM Assessments"
 
     # Header row — navy background, white bold text.
     ws.append(headers)
@@ -852,9 +852,9 @@ def export_xlsx():
     output.seek(0)
 
     filename = (
-        f"carver_assessments_{today_date}.xlsx"
+        f"prism_assessments_{today_date}.xlsx"
         if today_only
-        else f"carver_assessments_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
+        else f"prism_assessments_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
     )
     return Response(
         output.getvalue(),
@@ -891,7 +891,7 @@ def download_report(aid):
         slugify(row["cve"]) if row["cve"] else "",
         slugify(row["vuln_name"]) or "report",
     ]
-    filename = "carver_" + "_".join(s for s in segments if s) + ".html"
+    filename = "prism_" + "_".join(s for s in segments if s) + ".html"
 
     return Response(
         row["email_html"],
@@ -954,7 +954,7 @@ def logout():
     """Return 401 to flush the browser's cached Basic Auth credentials."""
     return Response(
         '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
-        "<title>Signed out — CARVER</title></head>"
+        "<title>Signed out — PRISM</title></head>"
         '<body style="font-family:sans-serif;text-align:center;padding:4rem;">'
         "<h2>You have been signed out.</h2>"
         '<p><a href="/">Sign in again</a></p>'
@@ -970,7 +970,7 @@ def logout():
 # ── Startup ───────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("CARVER Risk Assessment Tool")
+    print("PRISM Risk Assessment Tool")
     print(f"  Database : {DB_PATH}")
     print("  Listening: http://0.0.0.0:5000")
     print()

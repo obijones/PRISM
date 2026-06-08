@@ -190,7 +190,7 @@ The tool is designed to run as a **local server on the analyst's workstation** �
 
 ### Windows
 
-Double-click **`start_carver.bat`** from the project folder on the shared drive.
+Double-click **`start_prism.bat`** from the project folder on the shared drive.
 
 - Locates Python in the `.venv\Scripts\` virtual environment
 - Starts Flask in the foreground of the CMD window
@@ -208,12 +208,12 @@ python -m venv .venv
 
 ### Linux / macOS
 
-Run **`start_carver.sh`** from the project folder:
+Run **`start_prism.sh`** from the project folder:
 
 ```bash
-bash start_carver.sh
+bash start_prism.sh
 # or, after making it executable once:
-chmod +x start_carver.sh && ./start_carver.sh
+chmod +x start_prism.sh && ./start_prism.sh
 ```
 
 - Locates Python in `.venv/bin/python3` (falls back to `bin/python3` for a root-level venv)
@@ -372,8 +372,8 @@ python manage.py add-user analyst1
 
 # 5. Start the server
 #    Option A — launcher script (recommended, opens browser automatically):
-bash start_carver.sh        # Linux/macOS
-# start_carver.bat          # Windows (double-click)
+bash start_prism.sh         # Linux/macOS
+# start_prism.bat           # Windows (double-click)
 
 #    Option B — gunicorn (mirrors production):
 gunicorn -w 2 -b 127.0.0.1:5000 app:app
@@ -456,8 +456,8 @@ carver-tool-server/
 ├── app.py              # Flask application — routes, auth, DB helpers, sanitizers, SBOM endpoint
 ├── manage.py           # CLI — user management and DB initialisation
 ├── requirements.txt    # Python direct dependencies (Flask, gunicorn, nh3, openpyxl, …)
-├── start_carver.sh     # Local launcher — Linux/macOS (starts server + opens browser)
-├── start_carver.bat    # Local launcher — Windows  (starts server + opens browser)
+├── start_prism.sh      # Local launcher — Linux/macOS (starts server + opens browser)
+├── start_prism.bat     # Local launcher — Windows  (starts server + opens browser)
 ├── nginx.conf          # nginx reverse-proxy template (edit domain + cert paths)
 ├── data/
 │   └── carver.db       # SQLite database (permissions: 600, not committed to git)

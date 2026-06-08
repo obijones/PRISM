@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# CARVER Risk Assessment Tool — local launcher
+# PRISM Risk Assessment Tool — local launcher
 #
-# Usage: bash start_carver.sh
-#   (or make it executable once: chmod +x start_carver.sh && ./start_carver.sh)
+# Usage: bash start_prism.sh
+#   (or make it executable once: chmod +x start_prism.sh && ./start_prism.sh)
 #
 # The script locates the virtual environment Python, starts Flask in the
 # foreground, and opens a browser tab automatically.  Closing the terminal
@@ -31,7 +31,7 @@ PORT=5000
 URL="http://127.0.0.1:${PORT}"
 
 echo ""
-echo "  CARVER Risk Assessment Tool"
+echo "  PRISM Risk Assessment Tool"
 echo "  ──────────────────────────────────────────"
 echo "  URL     : ${URL}"
 echo "  Database: $(pwd)/data/carver.db"
