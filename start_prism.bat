@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-REM ── CARVER Risk Assessment Tool — Windows launcher ───────────────────────────
+REM ── PRISM Risk Assessment Tool — Windows launcher ───────────────────────────
 REM
 REM  Double-click this file to start the tool.
 REM  Flask runs in this window — close the window to stop the server.
@@ -14,7 +14,7 @@ REM    .venv\Scripts\pip install -r requirements.txt
 cd /d "%~dp0"
 
 echo.
-echo   CARVER Risk Assessment Tool
+echo   PRISM Risk Assessment Tool
 echo   ==========================================
 
 REM ── Locate venv Python ───────────────────────────────────────────────────────

@@ -372,8 +372,8 @@ python manage.py add-user analyst1
 
 # 5. Start the server
 #    Option A — launcher script (recommended, opens browser automatically):
-bash start_carver.sh        # Linux/macOS
-# start_carver.bat          # Windows (double-click)
+bash start_prism.sh         # Linux/macOS
+# start_prism.bat           # Windows (double-click)
 
 #    Option B — gunicorn (mirrors production):
 gunicorn -w 2 -b 127.0.0.1:5000 app:app
@@ -456,8 +456,8 @@ carver-tool-server/
 ├── app.py              # Flask application — routes, auth, DB helpers, sanitizers, SBOM endpoint
 ├── manage.py           # CLI — user management and DB initialisation
 ├── requirements.txt    # Python direct dependencies (Flask, gunicorn, nh3, openpyxl, …)
-├── start_carver.sh     # Local launcher — Linux/macOS (starts server + opens browser)
-├── start_carver.bat    # Local launcher — Windows  (starts server + opens browser)
+├── start_prism.sh      # Local launcher — Linux/macOS (starts server + opens browser)
+├── start_prism.bat     # Local launcher — Windows  (starts server + opens browser)
 ├── nginx.conf          # nginx reverse-proxy template (edit domain + cert paths)
 ├── data/
 │   └── carver.db       # SQLite database (permissions: 600, not committed to git)

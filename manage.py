@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CARVER Tool — management CLI
+PRISM Tool — management CLI
 
 Commands:
     python manage.py init-db
