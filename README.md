@@ -190,7 +190,7 @@ The tool is designed to run as a **local server on the analyst's workstation**. 
 
 ### Windows
 
-Double-click **`start_carver.bat`** from the project folder on the shared drive.
+Double-click **`start_prism.bat`** from the project folder on the shared drive.
 
 - Locates Python in the `.venv\Scripts\` virtual environment
 - Starts Flask in the foreground of the CMD window
@@ -208,12 +208,12 @@ python -m venv .venv
 
 ### Linux / macOS
 
-Run **`start_carver.sh`** from the project folder:
+Run **`start_prism.sh`** from the project folder:
 
 ```bash
-bash start_carver.sh
+bash start_prism.sh
 # or, after making it executable once:
-chmod +x start_carver.sh && ./start_carver.sh
+chmod +x start_prism.sh && ./start_prism.sh
 ```
 
 - Locates Python in `.venv/bin/python3` (falls back to `bin/python3` for a root-level venv)
