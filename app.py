@@ -593,7 +593,10 @@ def delete_assessment(aid):
 @require_auth
 def export_csv():
     """
-    Export all assessments as CSV.
+    Export assessments as CSV.
+
+    Pass ?today=1 to restrict the export to assessments dated today
+    (mirrors the same flag on the .xlsx endpoint).
 
     Column order and headers are documented below.  CARVER dimension scores
     and their human-readable level labels are exported side-by-side so the
@@ -606,6 +609,11 @@ def export_csv():
         pre_q2 → "Public PoC Exploit Available? (yes/no)"
         pre_q3 → "Asset Externally Accessible / Internet-Facing? (yes/no)"
     """
+    today_only = request.args.get("today") == "1"
+    today_date = datetime.now().strftime("%Y-%m-%d")
+
+    # CAST(? AS INTEGER) = 0  →  today_only is False  →  no date filter (all rows)
+    # CAST(? AS INTEGER) = 1  →  today_only is True   →  restrict to date = today_date
     db = get_db()
     rows = db.execute(
         """
@@ -626,9 +634,14 @@ def export_csv():
             total_score, risk_tier
         FROM assessments
         WHERE deleted_at IS NULL
+          AND (CAST(? AS INTEGER) = 0 OR date = ?)
         ORDER BY created_at DESC
-        """
+        """,
+        (int(today_only), today_date),
     ).fetchall()
+
+    if today_only and not rows:
+        return jsonify({"error": f"No assessments recorded for {today_date}."}), 404
 
     out = io.StringIO()
     w = csv.writer(out)
@@ -702,8 +715,11 @@ def export_csv():
             r["risk_tier"],
         ])
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"prism_assessments_{stamp}.csv"
+    filename = (
+        f"prism_assessments_{today_date}.csv"
+        if today_only
+        else f"prism_assessments_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    )
     return Response(
         out.getvalue(),
         mimetype="text/csv",

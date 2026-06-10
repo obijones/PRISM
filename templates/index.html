@@ -824,7 +824,7 @@
     </div>
     <div id="log-body" class="log-body hidden">
       <div class="log-actions">
-        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export only today's assessments as CSV">Export Today (.csv)</button>
         <button class="btn btn-ghost btn-sm" onclick="exportXLSX()">Export Excel (.xlsx)</button>
         <button class="btn btn-teal  btn-sm" onclick="exportTodayXLSX()" title="Export only today's assessments for appending to the SharePoint list">Export Today (.xlsx)</button>
       </div>
@@ -1608,8 +1608,29 @@
     }
   }
 
-  function exportCSV() {
-    window.location = '/api/assessments/export';
+  async function exportCSV() {
+    try {
+      const resp = await fetch('/api/assessments/export?today=1', {
+        credentials: 'same-origin',
+      });
+      if (resp.status === 404) {
+        const body = await resp.json().catch(() => ({}));
+        alert(body.error || 'No assessments recorded today.');
+        return;
+      }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const cd   = resp.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename=([^\s;]+)/);
+      a.href     = url;
+      a.download = match ? match[1] : 'prism_assessments_today.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    }
   }
 
   function exportXLSX() {
