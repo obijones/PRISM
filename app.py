@@ -637,7 +637,7 @@ def export_csv():
     # Pre-assessment question text is spelled out in full so the CSV is
     # self-explanatory without the web UI.
     w.writerow([
-        "ID",
+        "Event ID",
         "Server Timestamp (UTC)",
         "Authenticated As",
         "Assessment Date",
@@ -762,7 +762,7 @@ def export_xlsx():
         return jsonify({"error": f"No assessments recorded for {today_date}."}), 404
 
     headers = [
-        "ID", "Server Timestamp (UTC)", "Authenticated As",
+        "Event ID", "Server Timestamp (UTC)", "Authenticated As",
         "Assessment Date", "Analyst",
         "CVE", "Vulnerability / Threat", "Affected System",
         "Not Affected", "Confirmed By",
