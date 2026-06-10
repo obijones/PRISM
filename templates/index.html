@@ -1493,15 +1493,16 @@
 
   function printAsPDF() {
     const slugify = s => s.replace(/[^a-zA-Z0-9\-]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    // Suggested filename: date → CVE (if provided) → vulnerability/threat name.
     const parts = [];
+    const date = fv('f-date') || new Date().toISOString().slice(0, 10);
     const cve  = fv('f-cve');
     const vuln = fv('f-vuln');
-    const date = fv('f-date');
+    parts.push(date);
     if (cve)  parts.push(slugify(cve));
     if (vuln) parts.push(slugify(vuln));
-    if (date) parts.push(date);
     const origTitle = document.title;
-    document.title = parts.length ? parts.join('_') : 'PRISM_Assessment';
+    document.title = parts.join('_');
     window.addEventListener('afterprint', () => { document.title = origTitle; }, { once: true });
     window.print();
   }
