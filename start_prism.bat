@@ -35,7 +35,7 @@ if exist ".venv\Scripts\python.exe" (
 
 echo   URL     : http://127.0.0.1:5000
 echo   Database: %CD%\data\carver.db
-echo   Stop    : Close this window
+echo   Stop    : Use the Shut Down button in the app, or close this window
 echo.
 
 REM ── Open the browser after a 3-second delay ───────────────────────────────────

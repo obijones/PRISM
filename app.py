@@ -27,6 +27,7 @@ import os
 import re
 import secrets
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -945,6 +946,31 @@ def sbom():
         "generated":  datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "components": components,
     })
+
+
+# ── Shutdown ──────────────────────────────────────────────────────────────────
+
+@app.route("/api/shutdown", methods=["POST"])
+@require_auth
+def shutdown():
+    """
+    Stop the PRISM server from the GUI.
+
+    Intended for the local single-user launchers (start_prism.bat /
+    start_prism.sh), where the only other way to stop the tool is Ctrl+C
+    or closing the console window.  The confirmation response is sent
+    first; a short timer then terminates the process.
+
+    os._exit is used because Werkzeug 3.x removed its in-request shutdown
+    hook.  SQLite writes are committed within each request, so a hard exit
+    here cannot lose data.
+
+    Note: under gunicorn this only kills one worker (the master respawns
+    it) — stop production deployments with systemctl/supervisor instead.
+    """
+    print(f"Shutdown requested via GUI by {g.current_user}")
+    threading.Timer(0.75, os._exit, [0]).start()
+    return jsonify({"ok": True, "message": "PRISM server is shutting down."})
 
 
 # ── Logout ────────────────────────────────────────────────────────────────────

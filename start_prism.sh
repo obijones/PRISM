@@ -35,7 +35,7 @@ echo "  CARVER Risk Assessment Tool"
 echo "  ──────────────────────────────────────────"
 echo "  URL     : ${URL}"
 echo "  Database: $(pwd)/data/carver.db"
-echo "  Stop    : Ctrl+C"
+echo "  Stop    : Use the Shut Down button in the app, or Ctrl+C"
 echo ""
 
 # Open the browser after a short delay without blocking Flask startup.

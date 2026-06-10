@@ -62,6 +62,14 @@
       white-space: nowrap;
     }
     .sbom-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+    .shutdown-btn {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
+      color: rgba(255,255,255,0.6); background: rgba(230,57,70,0.18);
+      border: 1px solid rgba(230,57,70,0.55); border-radius: 4px;
+      padding: 0.22rem 0.6rem; cursor: pointer; transition: background 0.16s, color 0.16s;
+      white-space: nowrap;
+    }
+    .shutdown-btn:hover { background: rgba(230,57,70,0.55); color: #fff; }
     /* ── SBOM modal ── */
     .sbom-overlay {
       position: fixed; inset: 0; z-index: 1000;
@@ -385,6 +393,7 @@
     <span class="brand-sub">Prioritized Risk Intelligence and Scoring Matrix</span>
   </div>
   <button class="sbom-btn" onclick="openSBOM()">SBOM</button>
+  <button class="shutdown-btn" onclick="shutdownServer()" title="Stop the PRISM server — same as closing the launcher window">&#x23FB; Shut Down</button>
   <div class="user-pill">Signed in as <strong id="hdr-user">…</strong><a href="/logout" class="signout-link">Sign out</a></div>
 </header>
 
@@ -1759,6 +1768,27 @@
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeSBOM();
   });
+
+  // ── Shutdown ──────────────────────────────────────────────────────────────
+  async function shutdownServer() {
+    if (!confirm(
+      'Shut down the PRISM server?\n\n' +
+      'The application will stop and this page will no longer work. ' +
+      'Unsaved form entries will be lost.'
+    )) return;
+    try {
+      await apiPost('/api/shutdown', {});
+    } catch (_) {
+      // The server may terminate before the response arrives — that still
+      // means the shutdown worked, so fall through to the farewell screen.
+    }
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;' +
+      'font-family:Arial,Helvetica,sans-serif;background:#1a2744;color:#fff;text-align:center;">' +
+      '<div><h1 style="margin:0 0 0.5rem;">PRISM has shut down</h1>' +
+      '<p style="color:rgba(255,255,255,0.65);">The server has stopped. You can close this tab now.<br>' +
+      'To start it again, run start_prism.bat (Windows) or start_prism.sh (Linux/macOS).</p></div></div>';
+  }
 </script>
 
 </body>
